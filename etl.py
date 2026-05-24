@@ -420,7 +420,7 @@ def ultima_carga(conn: TursoConn, tabla: str):
 
 
 # ── EXTRACTORES JIRA ──────────────────────────────────────────────────────────
-def extraer_proyectos(client: JiraClient, conn: sqlite3.Connection, modo: str):
+def extraer_proyectos(client: JiraClient, conn: TursoConn, modo: str):
     log.info("→ Proyectos Jira...")
     now = datetime.now(timezone.utc).isoformat()
     try:
@@ -444,7 +444,7 @@ def extraer_proyectos(client: JiraClient, conn: sqlite3.Connection, modo: str):
         return []
 
 
-def extraer_versiones(client: JiraClient, conn: sqlite3.Connection,
+def extraer_versiones(client: JiraClient, conn: TursoConn,
                       project_keys: list, modo: str):
     log.info("→ Versiones...")
     now  = datetime.now(timezone.utc).isoformat()
@@ -464,7 +464,7 @@ def extraer_versiones(client: JiraClient, conn: sqlite3.Connection,
     log_etl(conn, modo, "rpt_versiones", n, "OK")
 
 
-def extraer_componentes(client: JiraClient, conn: sqlite3.Connection,
+def extraer_componentes(client: JiraClient, conn: TursoConn,
                         project_keys: list, modo: str):
     log.info("→ Componentes...")
     now  = datetime.now(timezone.utc).isoformat()
@@ -483,7 +483,7 @@ def extraer_componentes(client: JiraClient, conn: sqlite3.Connection,
     log_etl(conn, modo, "rpt_componentes", n, "OK")
 
 
-def extraer_boards_y_sprints(client: JiraClient, conn: sqlite3.Connection,
+def extraer_boards_y_sprints(client: JiraClient, conn: TursoConn,
                               project_keys: list, modo: str):
     log.info("→ Sprints...")
     sprints_map = {}
@@ -522,7 +522,7 @@ def extraer_boards_y_sprints(client: JiraClient, conn: sqlite3.Connection,
     return sprints_map, boards_map
 
 
-def extraer_epicas(client: JiraClient, conn: sqlite3.Connection,
+def extraer_epicas(client: JiraClient, conn: TursoConn,
                    boards_map: dict, modo: str):
     log.info("→ Epicas...")
     now  = datetime.now(timezone.utc).isoformat()
@@ -544,7 +544,7 @@ def extraer_epicas(client: JiraClient, conn: sqlite3.Connection,
     log_etl(conn, modo, "rpt_epicas", n, "OK")
 
 
-def extraer_issues(client: JiraClient, conn: sqlite3.Connection,
+def extraer_issues(client: JiraClient, conn: TursoConn,
                    project_keys: list, modo: str, desde: str = None):
     log.info("→ Issues...")
     now = datetime.now(timezone.utc).isoformat()
@@ -692,7 +692,7 @@ def extraer_issues(client: JiraClient, conn: sqlite3.Connection,
         return []
 
 
-def extraer_worklogs(client: JiraClient, conn: sqlite3.Connection,
+def extraer_worklogs(client: JiraClient, conn: TursoConn,
                      modo: str, full: bool = False):
     log.info("→ Worklogs Jira...")
     now = datetime.now(timezone.utc).isoformat()
@@ -751,7 +751,7 @@ def extraer_worklogs(client: JiraClient, conn: sqlite3.Connection,
         log_etl(conn, modo, "rpt_worklogs", 0, "ERROR", str(e))
 
 
-def extraer_jsm(client: JiraClient, conn: sqlite3.Connection, modo: str):
+def extraer_jsm(client: JiraClient, conn: TursoConn, modo: str):
     log.info("→ JSM tickets...")
     now = datetime.now(timezone.utc).isoformat()
     try:
@@ -808,7 +808,7 @@ def extraer_jsm(client: JiraClient, conn: sqlite3.Connection, modo: str):
 
 
 # ── EXTRACTORES ACTIVITY TIMELINE ─────────────────────────────────────────────
-def extraer_at_equipos(at: ATClient, conn: sqlite3.Connection, modo: str) -> list:
+def extraer_at_equipos(at: ATClient, conn: TursoConn, modo: str) -> list:
     """Devuelve lista de equipos [{team_id, nombre, team_type}]"""
     log.info("→ AT equipos...")
     now = datetime.now(timezone.utc).isoformat()
@@ -830,7 +830,7 @@ def extraer_at_equipos(at: ATClient, conn: sqlite3.Connection, modo: str) -> lis
         return []
 
 
-def extraer_at_usuarios(at: ATClient, conn: sqlite3.Connection, modo: str):
+def extraer_at_usuarios(at: ATClient, conn: TursoConn, modo: str):
     log.info("→ AT usuarios...")
     now = datetime.now(timezone.utc).isoformat()
     try:
@@ -875,7 +875,7 @@ def _rango_semanas(full: bool, semanas: int = 8) -> tuple:
     return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
 
 
-def extraer_at_workload(at: ATClient, conn: sqlite3.Connection,
+def extraer_at_workload(at: ATClient, conn: TursoConn,
                         equipos: list, modo: str, full: bool = False):
     """
     Extrae workload (horas planificadas) por equipo, usuario y dia.
@@ -944,7 +944,7 @@ def extraer_at_workload(at: ATClient, conn: sqlite3.Connection,
     log.info(f"  {n} registros de workload")
 
 
-def extraer_at_availability(at: ATClient, conn: sqlite3.Connection,
+def extraer_at_availability(at: ATClient, conn: TursoConn,
                              equipos: list, modo: str, full: bool = False):
     """Extrae disponibilidad real (capacidad libre) por usuario y dia."""
     log.info("→ AT availability (horas disponibles)...")
@@ -979,7 +979,7 @@ def extraer_at_availability(at: ATClient, conn: sqlite3.Connection,
     log.info(f"  {n} registros de availability")
 
 
-def extraer_at_capacity(at: ATClient, conn: sqlite3.Connection,
+def extraer_at_capacity(at: ATClient, conn: TursoConn,
                         equipos: list, modo: str, full: bool = False):
     """Extrae capacidad teorica (sin considerar tareas asignadas)."""
     log.info("→ AT capacity (capacidad teorica)...")
@@ -1014,7 +1014,7 @@ def extraer_at_capacity(at: ATClient, conn: sqlite3.Connection,
     log.info(f"  {n} registros de capacity")
 
 
-def extraer_at_eventos(at: ATClient, conn: sqlite3.Connection,
+def extraer_at_eventos(at: ATClient, conn: TursoConn,
                        equipos: list, modo: str, full: bool = False):
     """
     Extrae eventos del timeline: vacaciones, dias libres, bookings, placeholders.
@@ -1088,7 +1088,7 @@ def verificar_conexion(jira: JiraClient, at: ATClient = None):
     return ok_jira
 
 
-def mostrar_resumen(conn: sqlite3.Connection):
+def mostrar_resumen(conn: TursoConn):
     log.info("\n" + "="*58)
     log.info("RESUMEN DE LA BASE DE DATOS")
     log.info("="*58)
