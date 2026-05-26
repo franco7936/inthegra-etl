@@ -182,7 +182,19 @@ class TursoConn:
         placeholders = ", ".join(["?" for _ in df.columns])
         sql_insert   = f"INSERT OR REPLACE INTO {tabla} ({cols_str}) VALUES ({placeholders})"
 
-        rows_list = df.where(pd.notnull(df), None).values.tolist()
+        import math
+
+        def limpiar(v):
+            if v is None:
+                return None
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                return None
+            return v
+
+        rows_list = [
+            [limpiar(v) for v in row]
+            for row in df.where(pd.notnull(df), None).values.tolist()
+        ]
         insertados = 0
 
         for i in range(0, len(rows_list), chunksize):
