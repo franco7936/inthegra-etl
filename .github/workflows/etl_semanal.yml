@@ -3,7 +3,7 @@ name: ETL Semanal — Inthegra
 on:
   # Corre todos los lunes a las 3:00 AM UTC (12 AM Argentina)
   schedule:
-    - cron: '0 3 * * 1'
+    - cron: '0 3 * * *'
 
   # Permite correrlo manualmente desde GitHub Actions
   workflow_dispatch:
