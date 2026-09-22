@@ -5,30 +5,110 @@
     {
       "fecha": "2026-09-01",
       "equipo": "HealthCare",
-      "persona": "Equipo HealthCare",
-      "horas_reales": 32,
-      "horas_capacidad": 40
+      "persona": "Luna Borsotti",
+      "username": "luna.borsotti",
+      "event_type": "BOOKING",
+      "horas_at": 6,
+      "eventos": 1
+    },
+    {
+      "fecha": "2026-09-01",
+      "equipo": "HealthCare",
+      "persona": "Luna Borsotti",
+      "username": "luna.borsotti",
+      "event_type": "JIRA_ISSUE",
+      "horas_at": 2,
+      "eventos": 1
     },
     {
       "fecha": "2026-09-02",
       "equipo": "HealthCare",
-      "persona": "Equipo HealthCare",
-      "horas_reales": 30,
-      "horas_capacidad": 40
+      "persona": "Luna Borsotti",
+      "username": "luna.borsotti",
+      "event_type": "BOOKING",
+      "horas_at": 8,
+      "eventos": 1
+    },
+    {
+      "fecha": "2026-09-02",
+      "equipo": "HealthCare",
+      "persona": "Mateo Perez",
+      "username": "mateo.perez",
+      "event_type": "DAY_OFF",
+      "horas_at": 8,
+      "eventos": 1
+    },
+    {
+      "fecha": "2026-09-03",
+      "equipo": "HealthCare",
+      "persona": "Mateo Perez",
+      "username": "mateo.perez",
+      "event_type": "JIRA_ISSUE",
+      "horas_at": 7.5,
+      "eventos": 3
     },
     {
       "fecha": "2026-09-01",
       "equipo": "Credito & Finanzas",
-      "persona": "Equipo Credito",
-      "horas_reales": 24,
-      "horas_capacidad": 32
+      "persona": "Sofia Martin",
+      "username": "sofia.martin",
+      "event_type": "BOOKING",
+      "horas_at": 5,
+      "eventos": 1
+    },
+    {
+      "fecha": "2026-09-01",
+      "equipo": "Credito & Finanzas",
+      "persona": "Sofia Martin",
+      "username": "sofia.martin",
+      "event_type": "JIRA_ISSUE",
+      "horas_at": 3,
+      "eventos": 2
+    },
+    {
+      "fecha": "2026-09-02",
+      "equipo": "Credito & Finanzas",
+      "persona": "Bruno Alvarez",
+      "username": "bruno.alvarez",
+      "event_type": "BOOKING",
+      "horas_at": 8,
+      "eventos": 1
+    },
+    {
+      "fecha": "2026-09-03",
+      "equipo": "Credito & Finanzas",
+      "persona": "Bruno Alvarez",
+      "username": "bruno.alvarez",
+      "event_type": "INTERNAL",
+      "horas_at": 2,
+      "eventos": 1
+    },
+    {
+      "fecha": "2026-09-01",
+      "equipo": "Business",
+      "persona": "Camila Rios",
+      "username": "camila.rios",
+      "event_type": "BOOKING",
+      "horas_at": 4,
+      "eventos": 1
     },
     {
       "fecha": "2026-09-02",
       "equipo": "Business",
-      "persona": "Equipo Business",
-      "horas_reales": 18,
-      "horas_capacidad": 32
+      "persona": "Camila Rios",
+      "username": "camila.rios",
+      "event_type": "DAY_OFF",
+      "horas_at": 8,
+      "eventos": 1
+    },
+    {
+      "fecha": "2026-09-03",
+      "equipo": "Business",
+      "persona": "Ivan Lopez",
+      "username": "ivan.lopez",
+      "event_type": "JIRA_ISSUE",
+      "horas_at": 6.5,
+      "eventos": 2
     }
   ]
 }
