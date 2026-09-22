@@ -78,8 +78,36 @@ class TursoConn:
         else:
             return {"type": "text", "value": str(v)}
 
+    def _is_read_statement(self, sql: str) -> bool:
+        head = sql.upper().lstrip().split(None, 1)[0]
+        return head in {"SELECT", "WITH", "PRAGMA"}
+
+    def _cursor_from_results(self, results: list) -> TursoCursor:
+        cursor = TursoCursor(self)
+        if not results:
+            return cursor
+
+        r = results[0]
+        if r.get("type") == "error":
+            msg = r.get("error", {}).get("message", "unknown error")
+            raise Exception(f"Error ejecutando consulta: {msg}")
+        if r.get("type") != "ok":
+            return cursor
+
+        res = r.get("response", {}).get("result", {})
+        cols = [c["name"] for c in res.get("cols", [])]
+        cursor.description = [(c, None, None, None, None, None, None) for c in cols]
+        cursor._rows = [
+            tuple(
+                cell.get("value") if cell.get("type") != "null" else None
+                for cell in row
+            )
+            for row in res.get("rows", [])
+        ]
+        return cursor
+
     def execute(self, sql: str, params=None):
-        """Ejecuta un statement. Si tiene params, lo ejecuta inmediatamente."""
+        """Ejecuta un statement. Las lecturas devuelven filas inmediatamente."""
         sql = sql.strip()
         if not sql:
             return TursoCursor(self)
@@ -87,29 +115,14 @@ class TursoConn:
         if params:
             stmt = {"sql": sql, "args": [self._to_turso_arg(v) for v in params]}
             results = self._pipeline([stmt])
-        else:
-            # Acumular en pending para commit batch
-            self._pending.append(sql)
-            results = []
+            return self._cursor_from_results(results)
 
-        cursor = TursoCursor(self)
+        if self._is_read_statement(sql):
+            results = self._pipeline([sql])
+            return self._cursor_from_results(results)
 
-        # Parsear resultado si es SELECT
-        if results and sql.upper().lstrip().startswith("SELECT"):
-            r = results[0] if results else {}
-            if r.get("type") == "ok":
-                res  = r.get("response", {}).get("result", {})
-                cols = [c["name"] for c in res.get("cols", [])]
-                cursor.description = [(c, None, None, None, None, None, None) for c in cols]
-                cursor._rows = [
-                    tuple(
-                        cell.get("value") if cell.get("type") != "null" else None
-                        for cell in row
-                    )
-                    for row in res.get("rows", [])
-                ]
-
-        return cursor
+        self._pending.append(sql)
+        return TursoCursor(self)
 
     def executemany(self, sql: str, params_list):
         """Ejecuta el mismo statement con multiples sets de parametros."""
@@ -211,6 +224,5 @@ def conectar_turso() -> TursoConn:
         raise ValueError("Faltan TURSO_URL o TURSO_TOKEN en el .env")
     conn = TursoConn()
     # Verificar conexion
-    cur = conn.execute("SELECT 1 AS ok")
-    conn.commit()
+    conn.execute("SELECT 1 AS ok")
     return conn
