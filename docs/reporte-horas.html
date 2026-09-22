@@ -43,7 +43,7 @@
             <p class="lead text-secondary mb-0">Vista inicial para analizar horas registradas, capacidad y disponibilidad entre periodos.</p>
           </div>
           <div class="align-self-lg-end">
-            <span class="status-pill">Preparado para datos at_*</span>
+            <span class="status-pill" data-source-status>Esperando datos</span>
           </div>
         </section>
 
@@ -67,16 +67,16 @@
 
         <section class="row g-4 mb-4" aria-label="Indicadores principales">
           <div class="col-md-6 col-xl-3">
-            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Horas reales</span><span class="kpi-value d-block">--</span><span class="text-secondary small">Desde worklogs integrados</span></div></article>
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Horas reales</span><span class="kpi-value d-block" data-kpi="horasReales">--</span><span class="text-secondary small">Desde worklogs integrados</span></div></article>
           </div>
           <div class="col-md-6 col-xl-3">
-            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Capacidad</span><span class="kpi-value d-block">--</span><span class="text-secondary small">Tabla at_capacity</span></div></article>
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Capacidad</span><span class="kpi-value d-block" data-kpi="capacidad">--</span><span class="text-secondary small">Tabla at_capacity</span></div></article>
           </div>
           <div class="col-md-6 col-xl-3">
-            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Disponibilidad</span><span class="kpi-value d-block">--</span><span class="text-secondary small">Tabla at_availability</span></div></article>
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Disponibilidad</span><span class="kpi-value d-block" data-kpi="disponibilidad">--</span><span class="text-secondary small">Tabla at_availability</span></div></article>
           </div>
           <div class="col-md-6 col-xl-3">
-            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Utilizacion</span><span class="kpi-value d-block">--</span><span class="text-secondary small">Real sobre capacidad</span></div></article>
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Utilizacion</span><span class="kpi-value d-block" data-kpi="utilizacion">--</span><span class="text-secondary small">Real sobre capacidad</span></div></article>
           </div>
         </section>
 
@@ -96,7 +96,7 @@
                   <th>Utilizacion</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-hours-table>
                 <tr>
                   <td colspan="5" class="text-center text-secondary py-5">Los datos se conectaran en la siguiente iteracion del reporte.</td>
                 </tr>
