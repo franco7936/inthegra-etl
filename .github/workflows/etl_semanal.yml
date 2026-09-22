@@ -98,9 +98,9 @@ jobs:
             python extract_at_worklogs.py --dias 60
           fi
 
-      - name: Job 3 — Refresh modelo estrella (vistas)
+      - name: Job 3 — Refresh vistas activas
         timeout-minutes: 10
-        run: python refresh_vistas.py
+        run: python refresh_vistas_limpio.py
 
       - name: Job 4 — Migraciones y vistas AT para reportes
         timeout-minutes: 10
