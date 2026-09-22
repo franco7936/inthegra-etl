@@ -208,6 +208,26 @@ body {
   font-weight: 800;
 }
 
+.mapping-tabs {
+  border-color: var(--inthegra-line);
+}
+
+.mapping-tabs .nav-link {
+  color: #667085;
+  font-weight: 800;
+}
+
+.mapping-tabs .nav-link.active {
+  color: var(--inthegra-orange);
+  border-color: var(--inthegra-line) var(--inthegra-line) #ffffff;
+}
+
+.form-select,
+.form-control {
+  min-height: 44px;
+  border-color: var(--inthegra-line);
+}
+
 .table thead th {
   color: #667085;
   font-size: 0.74rem;
