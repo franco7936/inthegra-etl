@@ -10,11 +10,11 @@ from turso_conn import conectar_turso
 
 MIGRATIONS_DIR = Path("migrations")
 VIEW_MIGRATIONS = [
-    "2026-09-22_add_at_workload_usage_views.sql",
     "2026-09-22_add_at_event_type_report_views.sql",
 ]
 CLEANUP_MIGRATIONS = [
     "2026-09-22_remove_at_availability.sql",
+    "2026-09-22_remove_legacy_at_views.sql",
 ]
 
 
@@ -54,11 +54,11 @@ def main():
         print("Asegurando columnas nuevas en at_workload...")
         asegurar_columnas(conn)
 
-        print("Aplicando vistas AT para reportes...")
+        print("Aplicando vistas AT actuales para reportes...")
         for filename in VIEW_MIGRATIONS:
             execute_sql_file(conn, MIGRATIONS_DIR / filename)
 
-        print("Aplicando limpieza AT...")
+        print("Eliminando vistas AT legadas...")
         for filename in CLEANUP_MIGRATIONS:
             execute_sql_file(conn, MIGRATIONS_DIR / filename)
 
