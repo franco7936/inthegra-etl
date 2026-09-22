@@ -84,12 +84,14 @@ jobs:
         timeout-minutes: 10
         run: python refresh_vistas.py
 
-      - name: Notificacion de resultado
-        if: always()
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "✓ ETL completado exitosamente — $(date)"
-          else
-            echo "✗ ETL falló — revisar logs de GitHub Actions"
-            exit 1
-          fi
+      - name: Resultado correcto
+        if: success()
+        run: echo "✓ ETL completado exitosamente — $(date)"
+
+      - name: Resultado con error
+        if: failure()
+        run: echo "✗ ETL falló — revisar el paso anterior en los logs"
+
+      - name: Resultado cancelado
+        if: cancelled()
+        run: echo "ETL cancelado — revisar si fue por tiempo, por una nueva corrida o por cancelacion manual"
