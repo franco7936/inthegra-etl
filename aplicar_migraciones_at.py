@@ -20,6 +20,29 @@ CLEANUP_MIGRATIONS = [
     "2026-09-22_remove_legacy_at_views.sql",
 ]
 
+REQUIRED_COLUMNS = {
+    "at_workload": {
+        "issue_key": "TEXT",
+        "tipo_registro": "TEXT DEFAULT 'PLANIFICADO'",
+        "time_spent_seconds": "INTEGER DEFAULT 0",
+        "horas_usadas": "REAL DEFAULT 0",
+        "worklog_count": "INTEGER DEFAULT 0",
+    },
+    "at_capacity": {
+        "capacidad_origen": "TEXT DEFAULT 'AT_CAPACITY'",
+    },
+    "at_eventos": {
+        "project_key": "TEXT",
+        "issue_id": "TEXT",
+        "issue_type": "TEXT",
+        "daily_time_estimate": "REAL DEFAULT 0",
+        "estimate_per_work_day": "REAL DEFAULT 0",
+        "approved_by": "TEXT",
+        "extra_link": "TEXT",
+        "color": "TEXT",
+    },
+}
+
 
 def split_sql_script(sql: str) -> list[str]:
     statements = []
@@ -51,11 +74,40 @@ def execute_sql_file(conn, path: Path):
     conn.commit()
 
 
+def columnas_tabla(conn, table_name: str) -> set[str]:
+    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {row[1] for row in rows}
+
+
+def asegurar_columnas_reporte(conn):
+    print("Asegurando columnas requeridas para reportes AT...")
+    for table_name, columns in REQUIRED_COLUMNS.items():
+        existentes = columnas_tabla(conn, table_name)
+        if not existentes:
+            print(f"- Tabla {table_name} todavia no existe; se omite hasta que ETL la cree")
+            continue
+        for column_name, definition in columns.items():
+            if column_name not in existentes:
+                print(f"- Agregando {table_name}.{column_name}")
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
+        conn.commit()
+
+    conn.execute("UPDATE at_workload SET tipo_registro = 'PLANIFICADO' WHERE tipo_registro IS NULL OR tipo_registro = ''")
+    conn.execute("UPDATE at_workload SET time_spent_seconds = 0 WHERE time_spent_seconds IS NULL")
+    conn.execute("UPDATE at_workload SET horas_usadas = 0 WHERE horas_usadas IS NULL")
+    conn.execute("UPDATE at_workload SET worklog_count = 0 WHERE worklog_count IS NULL")
+    conn.execute("UPDATE at_capacity SET capacidad_origen = 'AT_CAPACITY' WHERE capacidad_origen IS NULL OR capacidad_origen = ''")
+    conn.execute("UPDATE at_eventos SET daily_time_estimate = COALESCE(daily_time_estimate, orig_estimate, 0)")
+    conn.execute("UPDATE at_eventos SET estimate_per_work_day = COALESCE(estimate_per_work_day, daily_time_estimate, orig_estimate, 0)")
+    conn.commit()
+
+
 def main():
     conn = conectar_turso()
     try:
         print("Asegurando columnas nuevas en at_workload...")
         asegurar_columnas(conn)
+        asegurar_columnas_reporte(conn)
 
         print("Aplicando tablas manuales de mapeo...")
         for filename in TABLE_MIGRATIONS:
