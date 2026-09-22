@@ -1,5 +1,5 @@
 """
-Extrae tiempo usado real desde ActivityTimeline.
+Agrega tiempo usado real desde ActivityTimeline dentro de at_workload.
 
 Fuente:
     /rest/api/1/timeline/{username}?start=YYYY-MM-DD&end=YYYY-MM-DD&eventType=WORKLOG
@@ -33,7 +33,7 @@ logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s  %(message)s",
     datefmt="%H:%M:%S",
 )
-log = logging.getLogger("at_worklogs")
+log = logging.getLogger("at_workload_usage")
 
 
 class ATClient:
@@ -59,30 +59,31 @@ def seg_a_hs(seconds):
     return round((seconds or 0) / 3600, 2)
 
 
-def crear_tabla(conn: TursoConn):
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS at_worklogs (
-            worklog_id          TEXT PRIMARY KEY,
-            username            TEXT,
-            issue_key           TEXT,
-            project_key         TEXT,
-            fecha               TEXT,
-            fecha_hora          TEXT,
-            comentario          TEXT,
-            categoria           TEXT,
-            time_spent_seconds  INTEGER,
-            horas_usadas        REAL,
-            fecha_carga         TEXT
-        );
+def asegurar_columnas(conn: TursoConn):
+    existentes = {row[1] for row in conn.execute("PRAGMA table_info(at_workload)").fetchall()}
+    columnas = {
+        "issue_key": "TEXT",
+        "tipo_registro": "TEXT DEFAULT 'PLANIFICADO'",
+        "time_spent_seconds": "INTEGER DEFAULT 0",
+        "horas_usadas": "REAL DEFAULT 0",
+        "worklog_count": "INTEGER DEFAULT 0",
+    }
+    for nombre, definicion in columnas.items():
+        if nombre not in existentes:
+            conn.execute(f"ALTER TABLE at_workload ADD COLUMN {nombre} {definicion}")
+    conn.commit()
 
-        CREATE INDEX IF NOT EXISTS idx_at_worklogs_fecha
-            ON at_worklogs (fecha);
-
-        CREATE INDEX IF NOT EXISTS idx_at_worklogs_usuario_fecha
-            ON at_worklogs (username, fecha);
-
-        CREATE INDEX IF NOT EXISTS idx_at_worklogs_issue
-            ON at_worklogs (issue_key);
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_at_workload_tipo_fecha
+            ON at_workload (tipo_registro, dia)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_at_workload_usuario_fecha
+            ON at_workload (username, dia)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_at_workload_issue
+            ON at_workload (issue_key)
     """)
     conn.commit()
 
@@ -112,13 +113,13 @@ def usuarios_desde_api(at: ATClient) -> list[str]:
     return sorted(set(usuarios))
 
 
-def extraer_at_worklogs(at: ATClient, conn: TursoConn, desde: str, hasta: str):
-    crear_tabla(conn)
+def extraer_at_workload_usage(at: ATClient, conn: TursoConn, desde: str, hasta: str):
+    asegurar_columnas(conn)
     usuarios = usuarios_desde_db(conn) or usuarios_desde_api(at)
     log.info("Usuarios AT a consultar: %s", len(usuarios))
 
     now = datetime.now(timezone.utc).isoformat()
-    rows = []
+    registros = []
 
     for index, username in enumerate(usuarios, start=1):
         try:
@@ -128,18 +129,13 @@ def extraer_at_worklogs(at: ATClient, conn: TursoConn, desde: str, hasta: str):
             )
             for item in data.get("issues", []) if isinstance(data, dict) else []:
                 seconds = int(item.get("timeSpent") or 0)
-                rows.append({
-                    "worklog_id": str(item.get("id", "")),
+                registros.append({
                     "username": item.get("username") or username,
-                    "issue_key": item.get("issueKey", ""),
+                    "dia": (item.get("date") or "")[:10],
                     "project_key": item.get("projectKey", ""),
-                    "fecha": (item.get("date") or "")[:10],
-                    "fecha_hora": item.get("date", ""),
-                    "comentario": (item.get("comment") or "")[:500],
-                    "categoria": item.get("category", ""),
+                    "issue_key": item.get("issueKey", ""),
                     "time_spent_seconds": seconds,
                     "horas_usadas": seg_a_hs(seconds),
-                    "fecha_carga": now,
                 })
         except Exception as exc:
             log.warning("Usuario %s omitido: %s", username, exc)
@@ -148,21 +144,50 @@ def extraer_at_worklogs(at: ATClient, conn: TursoConn, desde: str, hasta: str):
             log.info("Procesados %s/%s usuarios", index, len(usuarios))
         time.sleep(0.15)
 
-    conn.execute("DELETE FROM at_worklogs WHERE fecha >= ? AND fecha <= ?", (desde, hasta))
+    conn.execute(
+        "DELETE FROM at_workload WHERE tipo_registro = 'WORKLOG' AND dia >= ? AND dia <= ?",
+        (desde, hasta),
+    )
     conn.commit()
 
-    if rows:
-        df = pd.DataFrame(rows).drop_duplicates(subset=["worklog_id"])
-        n = conn.to_sql_df(df, "at_worklogs", if_exists="append", chunksize=50)
+    if registros:
+        df = pd.DataFrame(registros)
+        df = df.groupby(["username", "dia", "project_key", "issue_key"], as_index=False).agg(
+            time_spent_seconds=("time_spent_seconds", "sum"),
+            horas_usadas=("horas_usadas", "sum"),
+            worklog_count=("horas_usadas", "count"),
+        )
+        df["team_id"] = None
+        df["full_name"] = None
+        df["dia_semana"] = None
+        df["horas_plan"] = 0
+        df["tipo_registro"] = "WORKLOG"
+        df["fecha_carga"] = now
+        df = df[[
+            "team_id",
+            "username",
+            "full_name",
+            "dia",
+            "dia_semana",
+            "horas_plan",
+            "project_key",
+            "fecha_carga",
+            "issue_key",
+            "tipo_registro",
+            "time_spent_seconds",
+            "horas_usadas",
+            "worklog_count",
+        ]]
+        n = conn.to_sql_df(df, "at_workload", if_exists="append", chunksize=50)
     else:
         n = 0
 
     conn.execute(
         "INSERT INTO rpt_etl_log (fecha,modo,tabla,registros,estado,detalle) VALUES (?,?,?,?,?,?)",
-        (now, "at-worklogs", "at_worklogs", n, "OK", f"{desde} a {hasta}"),
+        (now, "at-workload-usage", "at_workload", n, "OK", f"{desde} a {hasta}"),
     )
     conn.commit()
-    log.info("at_worklogs: %s registros", n)
+    log.info("at_workload WORKLOG: %s registros", n)
     return n
 
 
@@ -175,7 +200,7 @@ def resolver_periodo(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Extrae worklogs reales desde ActivityTimeline")
+    parser = argparse.ArgumentParser(description="Agrega horas usadas de ActivityTimeline dentro de at_workload")
     parser.add_argument("--desde", type=str, default=None, help="Fecha inicial YYYY-MM-DD")
     parser.add_argument("--hasta", type=str, default=None, help="Fecha final YYYY-MM-DD")
     parser.add_argument("--dias", type=int, default=60, help="Dias hacia atras si no se pasa desde/hasta")
@@ -187,7 +212,7 @@ def main():
     at = ATClient()
     conn = conectar_turso()
     try:
-        extraer_at_worklogs(at, conn, desde, hasta)
+        extraer_at_workload_usage(at, conn, desde, hasta)
     finally:
         conn.close()
 
