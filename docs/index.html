@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inthegra | Reportes operativos</title>
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a class="brand" href="index.html" aria-label="Inicio Inthegra">
+            <img src="assets/inthegra-logo.svg" alt="Inthegra Software">
+          </a>
+          <nav class="nav" aria-label="Navegacion principal">
+            <a class="nav-link" href="index.html" aria-current="page">Inicio</a>
+            <a class="nav-link" href="reporte-horas.html">Reporte de horas</a>
+          </nav>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="intro">
+          <div class="intro-copy">
+            <p class="eyebrow">Sistema de reportes operativos</p>
+            <h1>Gestion mensual de horas, capacidad y foco de los equipos</h1>
+            <p class="lead">
+              Esta web concentra la informacion del ETL de Jira y ActivityTimeline para presentar, mes a mes, como se distribuye el esfuerzo de los equipos por periodo, vertical y persona.
+            </p>
+            <div class="actions">
+              <a class="button primary" href="reporte-horas.html">Ver reporte de horas</a>
+              <a class="button" href="https://github.com/franco7936/inthegra-etl">Repositorio</a>
+            </div>
+          </div>
+
+          <aside class="panel snapshot" aria-label="Resumen del reporte">
+            <h2 class="snapshot-title">Base del tablero</h2>
+            <div class="metric-grid">
+              <div class="metric">
+                <span class="metric-label">Fuente</span>
+                <span class="metric-value">AT</span>
+                <span class="metric-note">ActivityTimeline</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Destino</span>
+                <span class="metric-value">ETL</span>
+                <span class="metric-note">Modelo de reportes</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Vista</span>
+                <span class="metric-value">Mes</span>
+                <span class="metric-note">Comparacion por periodo</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Estado</span>
+                <span class="metric-value">v0</span>
+                <span class="metric-note">Estructura inicial</span>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="section">
+          <h2>Audiencias del reporte</h2>
+          <div class="audiences">
+            <article class="panel audience">
+              <h3>Equipo Dev</h3>
+              <p>Seguimiento de horas reales, disponibilidad y carga por proyecto.</p>
+            </article>
+            <article class="panel audience">
+              <h3>Product Management</h3>
+              <p>Lectura de foco operativo entre verticales, iniciativas y periodos.</p>
+            </article>
+            <article class="panel audience">
+              <h3>Direccion</h3>
+              <p>Resumen mensual para entender capacidad, utilizacion y tendencias.</p>
+            </article>
+            <article class="panel audience">
+              <h3>Clientes</h3>
+              <p>Soporte para presentaciones ejecutivas con datos consistentes.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-inner">
+          <span>Inthegra Software</span>
+          <span>Reportes operativos desde Jira + ActivityTimeline</span>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
