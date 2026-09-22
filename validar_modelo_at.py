@@ -21,12 +21,43 @@ REQUIRED_VIEWS = {
     "RPT_AT_HORAS_EQUIPO_TIPO_PERIODO",
 }
 
-REQUIRED_AT_WORKLOAD_COLUMNS = {
-    "issue_key",
-    "tipo_registro",
-    "time_spent_seconds",
-    "horas_usadas",
-    "worklog_count",
+REQUIRED_COLUMNS = {
+    "at_workload": {
+        "issue_key",
+        "tipo_registro",
+        "time_spent_seconds",
+        "horas_usadas",
+        "worklog_count",
+    },
+    "at_capacity": {
+        "team_id",
+        "username",
+        "full_name",
+        "dia",
+        "dia_semana",
+        "horas_cap",
+        "capacidad_origen",
+    },
+    "at_eventos": {
+        "evento_id",
+        "username",
+        "team_id",
+        "project_key",
+        "issue_key",
+        "issue_id",
+        "issue_type",
+        "event_type",
+        "summary",
+        "planned_start",
+        "planned_end",
+        "orig_estimate",
+        "rem_estimate",
+        "daily_time_estimate",
+        "estimate_per_work_day",
+        "approved_by",
+        "extra_link",
+        "color",
+    },
 }
 
 FORBIDDEN_TABLES = {
@@ -61,11 +92,9 @@ def main():
     try:
         tables = object_names(conn, "table")
         views = object_names(conn, "view")
-        workload_columns = table_columns(conn, "at_workload") if "at_workload" in tables else set()
 
         missing_tables = sorted(REQUIRED_TABLES - tables)
         missing_views = sorted(REQUIRED_VIEWS - views)
-        missing_workload_columns = sorted(REQUIRED_AT_WORKLOAD_COLUMNS - workload_columns)
         forbidden_tables = sorted(FORBIDDEN_TABLES & tables)
         forbidden_views = sorted(FORBIDDEN_VIEWS & views)
 
@@ -73,8 +102,15 @@ def main():
             errores.append(f"Faltan tablas: {', '.join(missing_tables)}")
         if missing_views:
             errores.append(f"Faltan vistas: {', '.join(missing_views)}")
-        if missing_workload_columns:
-            errores.append(f"Faltan columnas en at_workload: {', '.join(missing_workload_columns)}")
+
+        for table_name, required_columns in REQUIRED_COLUMNS.items():
+            if table_name not in tables:
+                continue
+            existing_columns = table_columns(conn, table_name)
+            missing_columns = sorted(required_columns - existing_columns)
+            if missing_columns:
+                errores.append(f"Faltan columnas en {table_name}: {', '.join(missing_columns)}")
+
         if forbidden_tables:
             errores.append(f"Siguen existiendo tablas legadas: {', '.join(forbidden_tables)}")
         if forbidden_views:
