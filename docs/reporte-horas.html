@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reporte de horas | Inthegra</title>
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a class="brand" href="index.html" aria-label="Inicio Inthegra">
+            <img src="assets/inthegra-logo.svg" alt="Inthegra Software">
+          </a>
+          <nav class="nav" aria-label="Navegacion principal">
+            <a class="nav-link" href="index.html">Inicio</a>
+            <a class="nav-link" href="reporte-horas.html" aria-current="page">Reporte de horas</a>
+          </nav>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="page-head">
+          <div>
+            <p class="eyebrow">ActivityTimeline</p>
+            <h1>Reporte de horas de equipos</h1>
+            <p>Vista inicial para analizar horas registradas, capacidad y disponibilidad entre periodos.</p>
+          </div>
+          <span class="status">Preparado para datos at_*</span>
+        </section>
+
+        <section class="panel filters" aria-label="Filtros del reporte">
+          <div class="field">
+            <label for="fechaDesde">Desde</label>
+            <input id="fechaDesde" type="date">
+          </div>
+          <div class="field">
+            <label for="fechaHasta">Hasta</label>
+            <input id="fechaHasta" type="date">
+          </div>
+          <button class="button primary" type="button" data-apply-period>Aplicar periodo</button>
+        </section>
+
+        <section class="report-grid" aria-label="Indicadores principales">
+          <article class="panel metric">
+            <span class="metric-label">Horas reales</span>
+            <span class="metric-value">--</span>
+            <span class="metric-note">Desde worklogs integrados</span>
+          </article>
+          <article class="panel metric">
+            <span class="metric-label">Capacidad</span>
+            <span class="metric-value">--</span>
+            <span class="metric-note">Tabla at_capacity</span>
+          </article>
+          <article class="panel metric">
+            <span class="metric-label">Disponibilidad</span>
+            <span class="metric-value">--</span>
+            <span class="metric-note">Tabla at_availability</span>
+          </article>
+          <article class="panel metric">
+            <span class="metric-label">Utilizacion</span>
+            <span class="metric-value">--</span>
+            <span class="metric-note">Real sobre capacidad</span>
+          </article>
+        </section>
+
+        <section class="panel table-panel">
+          <div class="table-header">
+            <h2>Detalle por equipo</h2>
+            <span class="period-pill" data-period-label>Periodo sin definir</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Equipo</th>
+                <th>Personas</th>
+                <th>Horas reales</th>
+                <th>Capacidad</th>
+                <th>Utilizacion</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="5" class="empty">Los datos se conectaran en la siguiente iteracion del reporte.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-inner">
+          <span>Inthegra Software</span>
+          <span>Periodo activo: <span data-period-label>Periodo sin definir</span></span>
+        </div>
+      </footer>
+    </div>
+    <script src="assets/app.js"></script>
+  </body>
+</html>
