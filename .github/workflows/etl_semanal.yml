@@ -24,6 +24,11 @@ on:
         options:
           - 'true'
           - 'false'
+      worklogs_mes:
+        description: 'Mes completo para worklogs AT (YYYY-MM). Si queda vacio usa ultimos 60 dias.'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: etl-${{ github.ref }}
@@ -33,7 +38,7 @@ jobs:
   etl:
     name: Extraccion de datos (Jira + AT → Turso)
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout codigo
@@ -63,7 +68,7 @@ jobs:
           QMETRY_PROJECT_KEY=${{ secrets.QMETRY_PROJECT_KEY }}
           EOF
 
-      - name: Job 1 — ETL incremental
+      - name: Job 1 — ETL base Jira y ActivityTimeline
         timeout-minutes: 80
         run: |
           MODO="${{ github.event.inputs.modo || 'incremental' }}"
@@ -80,9 +85,26 @@ jobs:
           echo "Corriendo: python etl.py $ARGS"
           python etl.py $ARGS
 
-      - name: Job 2 — Refresh modelo estrella (vistas)
+      - name: Job 2 — Horas reales AT en at_workload
+        timeout-minutes: 25
+        run: |
+          WORKLOGS_MES="${{ github.event.inputs.worklogs_mes || '' }}"
+
+          if [ -n "$WORKLOGS_MES" ]; then
+            echo "Corriendo worklogs AT para mes completo: $WORKLOGS_MES"
+            python extract_at_worklogs.py --mes "$WORKLOGS_MES"
+          else
+            echo "Corriendo worklogs AT para ultimos 60 dias"
+            python extract_at_worklogs.py --dias 60
+          fi
+
+      - name: Job 3 — Refresh modelo estrella (vistas)
         timeout-minutes: 10
         run: python refresh_vistas.py
+
+      - name: Job 4 — Migraciones y vistas AT para reportes
+        timeout-minutes: 10
+        run: python aplicar_migraciones_at.py
 
       - name: Resultado correcto
         if: success()
