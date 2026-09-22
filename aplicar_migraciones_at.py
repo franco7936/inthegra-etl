@@ -9,6 +9,9 @@ from extract_at_worklogs import asegurar_columnas
 from turso_conn import conectar_turso
 
 MIGRATIONS_DIR = Path("migrations")
+TABLE_MIGRATIONS = [
+    "2026-09-22_add_manual_mapping_tables.sql",
+]
 VIEW_MIGRATIONS = [
     "2026-09-22_add_at_event_type_report_views.sql",
 ]
@@ -54,11 +57,15 @@ def main():
         print("Asegurando columnas nuevas en at_workload...")
         asegurar_columnas(conn)
 
+        print("Aplicando tablas manuales de mapeo...")
+        for filename in TABLE_MIGRATIONS:
+            execute_sql_file(conn, MIGRATIONS_DIR / filename)
+
         print("Aplicando vistas AT actuales para reportes...")
         for filename in VIEW_MIGRATIONS:
             execute_sql_file(conn, MIGRATIONS_DIR / filename)
 
-        print("Eliminando vistas AT legadas...")
+        print("Eliminando objetos AT legados...")
         for filename in CLEANUP_MIGRATIONS:
             execute_sql_file(conn, MIGRATIONS_DIR / filename)
 
