@@ -7,32 +7,28 @@
       "equipo": "HealthCare",
       "persona": "Equipo HealthCare",
       "horas_reales": 32,
-      "horas_capacidad": 40,
-      "horas_disponibles": 8
+      "horas_capacidad": 40
     },
     {
       "fecha": "2026-09-02",
       "equipo": "HealthCare",
       "persona": "Equipo HealthCare",
       "horas_reales": 30,
-      "horas_capacidad": 40,
-      "horas_disponibles": 10
+      "horas_capacidad": 40
     },
     {
       "fecha": "2026-09-01",
       "equipo": "Credito & Finanzas",
       "persona": "Equipo Credito",
       "horas_reales": 24,
-      "horas_capacidad": 32,
-      "horas_disponibles": 8
+      "horas_capacidad": 32
     },
     {
       "fecha": "2026-09-02",
       "equipo": "Business",
       "persona": "Equipo Business",
       "horas_reales": 18,
-      "horas_capacidad": 32,
-      "horas_disponibles": 14
+      "horas_capacidad": 32
     }
   ]
 }
