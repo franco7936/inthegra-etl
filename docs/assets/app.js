@@ -7,7 +7,6 @@ const sourceStatus = document.querySelector('[data-source-status]');
 const kpiNodes = {
   horasReales: document.querySelector('[data-kpi="horasReales"]'),
   capacidad: document.querySelector('[data-kpi="capacidad"]'),
-  disponibilidad: document.querySelector('[data-kpi="disponibilidad"]'),
   utilizacion: document.querySelector('[data-kpi="utilizacion"]'),
 };
 
@@ -63,12 +62,10 @@ function summarizeRows(rows) {
       personas: new Set(),
       horasReales: 0,
       capacidad: 0,
-      disponibilidad: 0,
     };
     if (row.persona) current.personas.add(row.persona);
     current.horasReales += Number(row.horas_reales || 0);
     current.capacidad += Number(row.horas_capacidad || 0);
-    current.disponibilidad += Number(row.horas_disponibles || 0);
     byTeam.set(key, current);
   }
   return [...byTeam.values()].map((row) => ({
@@ -82,13 +79,11 @@ function renderKpis(teamRows) {
   const totals = teamRows.reduce((acc, row) => {
     acc.horasReales += row.horasReales;
     acc.capacidad += row.capacidad;
-    acc.disponibilidad += row.disponibilidad;
     return acc;
-  }, { horasReales: 0, capacidad: 0, disponibilidad: 0 });
+  }, { horasReales: 0, capacidad: 0 });
   const utilizacion = totals.capacidad > 0 ? (totals.horasReales / totals.capacidad) * 100 : NaN;
   if (kpiNodes.horasReales) kpiNodes.horasReales.textContent = formatHours(totals.horasReales);
   if (kpiNodes.capacidad) kpiNodes.capacidad.textContent = formatHours(totals.capacidad);
-  if (kpiNodes.disponibilidad) kpiNodes.disponibilidad.textContent = formatHours(totals.disponibilidad);
   if (kpiNodes.utilizacion) kpiNodes.utilizacion.textContent = formatPercent(utilizacion);
 }
 
