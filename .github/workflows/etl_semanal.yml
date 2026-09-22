@@ -25,7 +25,7 @@ on:
           - 'true'
           - 'false'
       worklogs_mes:
-        description: 'Mes completo para worklogs AT (YYYY-MM). Si queda vacio usa ultimos 60 dias.'
+        description: 'Mes completo para datos AT (YYYY-MM). Si queda vacio usa ultimos 60 dias.'
         required: false
         default: ''
         type: string
@@ -85,7 +85,11 @@ jobs:
           echo "Corriendo: python etl.py $ARGS"
           python etl.py $ARGS
 
-      - name: Job 2 — Horas reales AT en at_workload
+      - name: Job 2 — Preparar esquema AT y mapeos
+        timeout-minutes: 10
+        run: python aplicar_migraciones_at.py
+
+      - name: Job 3 — Horas reales AT en at_workload
         timeout-minutes: 25
         run: |
           WORKLOGS_MES="${{ github.event.inputs.worklogs_mes || '' }}"
@@ -98,15 +102,28 @@ jobs:
             python extract_at_worklogs.py --dias 60
           fi
 
-      - name: Job 3 — Refresh vistas activas
+      - name: Job 4 — Eventos AT detallados
+        timeout-minutes: 25
+        run: |
+          WORKLOGS_MES="${{ github.event.inputs.worklogs_mes || '' }}"
+
+          if [ -n "$WORKLOGS_MES" ]; then
+            echo "Corriendo eventos AT para mes completo: $WORKLOGS_MES"
+            python extract_at_eventos_detalle.py --mes "$WORKLOGS_MES"
+          else
+            echo "Corriendo eventos AT para ultimos 60 dias"
+            python extract_at_eventos_detalle.py --dias 60
+          fi
+
+      - name: Job 5 — Refresh vistas activas
         timeout-minutes: 10
         run: python refresh_vistas_limpio.py
 
-      - name: Job 4 — Migraciones y vistas AT para reportes
+      - name: Job 6 — Reaplicar vistas AT finales
         timeout-minutes: 10
         run: python aplicar_migraciones_at.py
 
-      - name: Job 5 — Validacion final modelo AT
+      - name: Job 7 — Validacion final modelo AT
         timeout-minutes: 5
         run: python validar_modelo_at.py
 
