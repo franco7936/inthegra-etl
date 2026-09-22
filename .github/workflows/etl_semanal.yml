@@ -1,7 +1,7 @@
 name: ETL Semanal — Inthegra
 
 on:
-  # Corre todos los lunes a las 3:00 AM UTC (12 AM Argentina)
+  # Corre todos los dias a las 3:00 AM UTC (12 AM Argentina)
   schedule:
     - cron: '0 3 * * *'
 
@@ -25,24 +25,29 @@ on:
           - 'true'
           - 'false'
 
+concurrency:
+  group: etl-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   etl:
     name: Extraccion de datos (Jira + AT → Turso)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
 
     steps:
       - name: Checkout codigo
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5
 
       - name: Setup Python 3.11
-        uses: actions/setup-python@v5.3.0
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Instalar dependencias
-        run: pip install requests pandas python-dotenv httpx
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
       - name: Crear archivo .env desde secrets
         run: |
@@ -59,6 +64,7 @@ jobs:
           EOF
 
       - name: Job 1 — ETL incremental
+        timeout-minutes: 80
         run: |
           MODO="${{ github.event.inputs.modo || 'incremental' }}"
           SIN_JSM="${{ github.event.inputs.sin_jsm || 'true' }}"
@@ -75,6 +81,7 @@ jobs:
           python etl.py $ARGS
 
       - name: Job 2 — Refresh modelo estrella (vistas)
+        timeout-minutes: 10
         run: python refresh_vistas.py
 
       - name: Notificacion de resultado
