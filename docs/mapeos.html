@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mapeos | Inthegra</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <nav class="navbar navbar-expand-lg bg-white sticky-top">
+        <div class="container-xl">
+          <a class="navbar-brand d-flex align-items-center gap-2" href="index.html" aria-label="Inicio Inthegra Reports">
+            <img class="brand-mark" src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra">
+            <span>
+              <span class="brand-title d-block">Inthegra Reports</span>
+              <span class="brand-subtitle d-block">Portal operativo</span>
+            </span>
+          </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Abrir navegacion">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav ms-auto align-items-lg-center">
+              <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+              <li class="nav-item reports-menu">
+                <button class="reports-menu-button" type="button" aria-haspopup="true">Reportes</button>
+                <ul class="reports-menu-list" aria-label="Reportes disponibles">
+                  <li><a class="reports-menu-link" href="reporte-horas.html">Reporte de horas</a></li>
+                </ul>
+              </li>
+              <li class="nav-item"><a class="nav-link active" href="mapeos.html" aria-current="page">Mapeos</a></li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <main class="app-main container-xl py-5">
+        <section class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+          <div>
+            <p class="eyebrow mb-2">Relacion de fuentes</p>
+            <h1 class="display-6 fw-bold mb-2">Mapeos manuales</h1>
+            <p class="lead text-secondary mb-0">Relaciona Jira con ActivityTimeline para que los reportes usen una misma lectura de proyectos, equipos y personas.</p>
+          </div>
+          <div class="align-self-lg-end d-flex flex-column flex-sm-row gap-2">
+            <span class="status-pill" data-mapping-status>Sin cambios locales</span>
+            <button class="btn btn-inthegra" type="button" data-export-mappings>Exportar JSON</button>
+          </div>
+        </section>
+
+        <ul class="nav nav-tabs mapping-tabs mb-4" id="mappingTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="projects-tab" data-bs-toggle="tab" data-bs-target="#projects-pane" type="button" role="tab" aria-controls="projects-pane" aria-selected="true">Proyectos y equipos</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="people-tab" data-bs-toggle="tab" data-bs-target="#people-pane" type="button" role="tab" aria-controls="people-pane" aria-selected="false">Personas</button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <section class="tab-pane fade show active" id="projects-pane" role="tabpanel" aria-labelledby="projects-tab" tabindex="0">
+            <div class="card filter-card mb-4">
+              <div class="card-body p-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-lg-5">
+                    <label class="form-label fw-bold text-secondary" for="jiraProject">Proyecto Jira</label>
+                    <select class="form-select" id="jiraProject"></select>
+                  </div>
+                  <div class="col-lg-5">
+                    <label class="form-label fw-bold text-secondary" for="atTeam">Equipo ActivityTimeline</label>
+                    <select class="form-select" id="atTeam"></select>
+                  </div>
+                  <div class="col-lg-2">
+                    <label class="form-label fw-bold text-secondary" for="projectCriterion">Criterio</label>
+                    <select class="form-select" id="projectCriterion">
+                      <option value="manual">Manual</option>
+                      <option value="nombre">Nombre</option>
+                      <option value="codigo">Codigo</option>
+                    </select>
+                  </div>
+                  <div class="col-12 d-grid d-md-flex justify-content-md-end">
+                    <button class="btn btn-inthegra" type="button" data-add-project>Relacionar proyecto</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <section class="card table-card">
+              <div class="card-header bg-white p-4"><h2 class="h5 fw-bold mb-0">Relaciones proyecto/equipo</h2></div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <thead><tr><th>Jira</th><th>ActivityTimeline</th><th>Criterio</th><th></th></tr></thead>
+                  <tbody data-project-mappings></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <section class="tab-pane fade" id="people-pane" role="tabpanel" aria-labelledby="people-tab" tabindex="0">
+            <div class="card filter-card mb-4">
+              <div class="card-body p-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-lg-5">
+                    <label class="form-label fw-bold text-secondary" for="jiraPerson">Persona Jira</label>
+                    <select class="form-select" id="jiraPerson"></select>
+                  </div>
+                  <div class="col-lg-5">
+                    <label class="form-label fw-bold text-secondary" for="atPerson">Persona ActivityTimeline</label>
+                    <select class="form-select" id="atPerson"></select>
+                  </div>
+                  <div class="col-lg-2">
+                    <label class="form-label fw-bold text-secondary" for="personCriterion">Criterio</label>
+                    <select class="form-select" id="personCriterion">
+                      <option value="manual">Manual</option>
+                      <option value="account_id">Account ID</option>
+                      <option value="email">Email</option>
+                      <option value="nombre">Nombre</option>
+                    </select>
+                  </div>
+                  <div class="col-12 d-grid d-md-flex justify-content-md-end">
+                    <button class="btn btn-inthegra" type="button" data-add-person>Relacionar persona</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <section class="card table-card">
+              <div class="card-header bg-white p-4"><h2 class="h5 fw-bold mb-0">Relaciones de personas</h2></div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <thead><tr><th>Jira</th><th>ActivityTimeline</th><th>Criterio</th><th></th></tr></thead>
+                  <tbody data-person-mappings></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+        </div>
+      </main>
+
+      <footer class="footer py-3">
+        <div class="container-xl d-flex flex-column flex-md-row justify-content-between gap-2">
+          <span>Inthegra Software</span>
+          <span>Mapeos guardados localmente hasta publicar configuracion</span>
+        </div>
+      </footer>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/mapeos.js"></script>
+  </body>
+</html>
