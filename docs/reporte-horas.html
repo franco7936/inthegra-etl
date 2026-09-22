@@ -39,8 +39,8 @@
         <section class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
           <div>
             <p class="eyebrow mb-2">ActivityTimeline</p>
-            <h1 class="display-6 fw-bold mb-2">Reporte de horas de equipos</h1>
-            <p class="lead text-secondary mb-0">Vista inicial para analizar horas registradas y capacidad entre periodos.</p>
+            <h1 class="display-6 fw-bold mb-2">Reporte de horas por tipo de evento</h1>
+            <p class="lead text-secondary mb-0">Horas agrupadas por persona y por equipo, desagregadas por booking, Jira issue, day off y otros eventos.</p>
           </div>
           <div class="align-self-lg-end">
             <span class="status-pill" data-source-status>Esperando datos</span>
@@ -50,15 +50,21 @@
         <section class="card filter-card mb-4">
           <div class="card-body p-4">
             <div class="row g-3 align-items-end">
-              <div class="col-md-5">
+              <div class="col-md-4 col-xl-3">
                 <label class="form-label fw-bold text-secondary" for="fechaDesde">Desde</label>
                 <input class="form-control" id="fechaDesde" type="date">
               </div>
-              <div class="col-md-5">
+              <div class="col-md-4 col-xl-3">
                 <label class="form-label fw-bold text-secondary" for="fechaHasta">Hasta</label>
                 <input class="form-control" id="fechaHasta" type="date">
               </div>
-              <div class="col-md-2 d-grid">
+              <div class="col-md-4 col-xl-3">
+                <label class="form-label fw-bold text-secondary" for="equipoFiltro">Equipo</label>
+                <select class="form-select" id="equipoFiltro" data-team-filter>
+                  <option value="">Todos los equipos</option>
+                </select>
+              </div>
+              <div class="col-md-4 col-xl-3 d-grid">
                 <button class="btn btn-inthegra" type="button" data-apply-period>Aplicar</button>
               </div>
             </div>
@@ -66,39 +72,52 @@
         </section>
 
         <section class="row g-4 mb-4" aria-label="Indicadores principales">
-          <div class="col-md-6 col-xl-4">
-            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Horas reales</span><span class="kpi-value d-block" data-kpi="horasReales">--</span><span class="text-secondary small">Desde worklogs integrados</span></div></article>
+          <div class="col-md-6 col-xl-3">
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Horas AT</span><span class="kpi-value d-block" data-kpi="horasAt">--</span><span class="text-secondary small">Eventos del periodo</span></div></article>
           </div>
-          <div class="col-md-6 col-xl-4">
-            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Capacidad</span><span class="kpi-value d-block" data-kpi="capacidad">--</span><span class="text-secondary small">Tabla at_capacity</span></div></article>
+          <div class="col-md-6 col-xl-3">
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Personas</span><span class="kpi-value d-block" data-kpi="personas">--</span><span class="text-secondary small">Usuarios con eventos</span></div></article>
           </div>
-          <div class="col-md-6 col-xl-4">
-            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Utilizacion</span><span class="kpi-value d-block" data-kpi="utilizacion">--</span><span class="text-secondary small">Real sobre capacidad</span></div></article>
+          <div class="col-md-6 col-xl-3">
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Equipos</span><span class="kpi-value d-block" data-kpi="equipos">--</span><span class="text-secondary small">Equipos involucrados</span></div></article>
+          </div>
+          <div class="col-md-6 col-xl-3">
+            <article class="card kpi-card h-100"><div class="card-body p-4"><span class="kpi-label">Tipo principal</span><span class="kpi-value d-block kpi-text" data-kpi="tipoPrincipal">--</span><span class="text-secondary small">Mayor dedicacion</span></div></article>
           </div>
         </section>
 
-        <section class="card table-card">
-          <div class="card-header bg-white p-4 d-flex flex-column flex-md-row justify-content-between gap-2">
-            <h2 class="h5 fw-bold mb-0">Detalle por equipo</h2>
-            <span class="status-pill" data-period-label>Periodo sin definir</span>
+        <section class="card table-card mb-4">
+          <div class="card-header bg-white p-4 d-flex flex-column flex-xl-row justify-content-between gap-3">
+            <div>
+              <h2 class="h5 fw-bold mb-1">Distribucion por tipo de evento</h2>
+              <span class="text-secondary small">Periodo: <span data-period-label>Periodo sin definir</span></span>
+            </div>
+            <div class="view-toggle" role="tablist" aria-label="Vista del reporte">
+              <button class="view-toggle-button active" type="button" data-view-button="personas">Personas</button>
+              <button class="view-toggle-button" type="button" data-view-button="equipos">Equipos</button>
+            </div>
           </div>
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Equipo</th>
-                  <th>Personas</th>
-                  <th>Horas reales</th>
-                  <th>Capacidad</th>
-                  <th>Utilizacion</th>
-                </tr>
-              </thead>
-              <tbody data-hours-table>
-                <tr>
-                  <td colspan="5" class="text-center text-secondary py-5">Los datos se conectaran en la siguiente iteracion del reporte.</td>
-                </tr>
-              </tbody>
-            </table>
+
+          <div class="report-view active" data-report-view="personas">
+            <div class="table-responsive">
+              <table class="table align-middle mb-0 report-matrix">
+                <thead data-person-table-head></thead>
+                <tbody data-person-table-body>
+                  <tr><td class="text-center text-secondary py-5">Los datos se conectaran en la siguiente iteracion del reporte.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="report-view" data-report-view="equipos">
+            <div class="table-responsive">
+              <table class="table align-middle mb-0 report-matrix">
+                <thead data-team-table-head></thead>
+                <tbody data-team-table-body>
+                  <tr><td class="text-center text-secondary py-5">Los datos se conectaran en la siguiente iteracion del reporte.</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       </main>
