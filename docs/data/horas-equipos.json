@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-09-22T00:00:00Z",
+  "source": "sample",
+  "rows": [
+    {
+      "fecha": "2026-09-01",
+      "equipo": "HealthCare",
+      "persona": "Equipo HealthCare",
+      "horas_reales": 32,
+      "horas_capacidad": 40,
+      "horas_disponibles": 8
+    },
+    {
+      "fecha": "2026-09-02",
+      "equipo": "HealthCare",
+      "persona": "Equipo HealthCare",
+      "horas_reales": 30,
+      "horas_capacidad": 40,
+      "horas_disponibles": 10
+    },
+    {
+      "fecha": "2026-09-01",
+      "equipo": "Credito & Finanzas",
+      "persona": "Equipo Credito",
+      "horas_reales": 24,
+      "horas_capacidad": 32,
+      "horas_disponibles": 8
+    },
+    {
+      "fecha": "2026-09-02",
+      "equipo": "Business",
+      "persona": "Equipo Business",
+      "horas_reales": 18,
+      "horas_capacidad": 32,
+      "horas_disponibles": 14
+    }
+  ]
+}
