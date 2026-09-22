@@ -196,6 +196,14 @@ body {
   font-weight: 850;
 }
 
+.kpi-text {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 1.35rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -206,6 +214,51 @@ body {
   color: var(--inthegra-orange-dark);
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.view-toggle {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  gap: 4px;
+  align-self: flex-start;
+  padding: 4px;
+  border: 1px solid var(--inthegra-line);
+  border-radius: 0.75rem;
+  background: #f4f6fa;
+}
+
+.view-toggle-button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: #667085;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.view-toggle-button.active {
+  background: #ffffff;
+  color: var(--inthegra-orange-dark);
+  box-shadow: 0 8px 18px rgba(15, 32, 67, 0.08);
+}
+
+.report-view {
+  display: none;
+}
+
+.report-view.active {
+  display: block;
+}
+
+.report-matrix th,
+.report-matrix td {
+  white-space: nowrap;
+}
+
+.report-matrix tbody tr:hover td {
+  background: #fff8f3;
 }
 
 .mapping-tabs {
@@ -266,5 +319,9 @@ body {
   .brand-mark {
     width: 34px;
     height: 34px;
+  }
+
+  .view-toggle {
+    width: 100%;
   }
 }
