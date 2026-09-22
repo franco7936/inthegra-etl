@@ -73,6 +73,12 @@ def asegurar_columnas(conn: TursoConn):
             conn.execute(f"ALTER TABLE at_workload ADD COLUMN {nombre} {definicion}")
     conn.commit()
 
+    conn.execute("UPDATE at_workload SET tipo_registro = 'PLANIFICADO' WHERE tipo_registro IS NULL OR tipo_registro = ''")
+    conn.execute("UPDATE at_workload SET time_spent_seconds = 0 WHERE time_spent_seconds IS NULL")
+    conn.execute("UPDATE at_workload SET horas_usadas = 0 WHERE horas_usadas IS NULL")
+    conn.execute("UPDATE at_workload SET worklog_count = 0 WHERE worklog_count IS NULL")
+    conn.commit()
+
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_at_workload_tipo_fecha
             ON at_workload (tipo_registro, dia)
