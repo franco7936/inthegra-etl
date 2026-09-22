@@ -7,10 +7,9 @@ SELECT
     team_id,
     project_key,
     SUM(horas_capacidad)    AS horas_capacidad,
-    SUM(horas_disponibles)  AS horas_disponibles,
     SUM(horas_planificadas) AS horas_planificadas,
     SUM(horas_reales)       AS horas_reales,
-    ROUND(SUM(horas_capacidad)   - SUM(horas_planificadas), 2) AS horas_asignadas,
+    ROUND(SUM(horas_capacidad)   - SUM(horas_planificadas), 2) AS horas_sin_planificar,
     ROUND(SUM(horas_planificadas)- SUM(horas_reales), 2)       AS variacion_plan_real,
     CASE WHEN SUM(horas_capacidad)    = 0 THEN NULL
          ELSE ROUND(100.0 * SUM(horas_reales) / SUM(horas_capacidad), 1)
@@ -31,14 +30,9 @@ FROM (
         cap.team_id,
         COALESCE(wl.project_key, '') AS project_key,
         cap.horas_cap                AS horas_capacidad,
-        COALESCE(av.horas_disp,  0)  AS horas_disponibles,
         COALESCE(wl.horas_plan,  0)  AS horas_planificadas,
         COALESCE(wr.horas_reales,0)  AS horas_reales
     FROM at_capacity cap
-    LEFT JOIN at_availability av
-        ON  av.username = cap.username
-        AND av.dia      = cap.dia
-        AND av.team_id  = cap.team_id
     LEFT JOIN at_workload wl
         ON  wl.username = cap.username
         AND wl.dia      = cap.dia
@@ -62,7 +56,6 @@ FROM (
         NULL            AS team_id,
         w.project_key,
         0               AS horas_capacidad,
-        0               AS horas_disponibles,
         0               AS horas_planificadas,
         ROUND(SUM(w.hours_logged), 2) AS horas_reales
     FROM rpt_worklogs w
@@ -84,9 +77,8 @@ SELECT
     fc.team_id,
     ROUND(SUM(fc.horas_capacidad),    1) AS capacidad_total_hs,
     ROUND(SUM(fc.horas_planificadas), 1) AS planificado_hs,
-    ROUND(SUM(fc.horas_disponibles),  1) AS disponible_hs,
     ROUND(SUM(fc.horas_reales),       1) AS real_hs,
-    ROUND(SUM(fc.horas_capacidad) - SUM(fc.horas_planificadas), 1) AS sin_asignar_hs,
+    ROUND(SUM(fc.horas_capacidad) - SUM(fc.horas_planificadas), 1) AS sin_planificar_hs,
     CASE WHEN SUM(fc.horas_capacidad) = 0 THEN NULL
          ELSE ROUND(100.0 * SUM(fc.horas_reales) / SUM(fc.horas_capacidad), 1)
     END AS pct_utilizacion
