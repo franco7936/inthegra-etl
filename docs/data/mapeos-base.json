@@ -1,0 +1,23 @@
+{
+  "jira_projects": [
+    { "project_key": "HEALTH", "nombre": "HealthCare" },
+    { "project_key": "CREDIT", "nombre": "Credito & Finanzas" },
+    { "project_key": "BUSINESS", "nombre": "Business" },
+    { "project_key": "IMPL", "nombre": "Implementaciones" },
+    { "project_key": "SOLUTIONS", "nombre": "Solutions" },
+    { "project_key": "SDC", "nombre": "Soporte & Customer Services" }
+  ],
+  "at_teams": [
+    { "team_id": "1887964038729056425", "nombre": "[HEALTH] HEALTH Team" },
+    { "team_id": "4607552451305227984", "nombre": "[CREDIT] CREDIT Team" },
+    { "team_id": "2144395923319442701", "nombre": "[BUSSINES] BUSSINES Team" },
+    { "team_id": "4943724420684009274", "nombre": "[IMPL] IMPLEMENTACIONES Team" },
+    { "team_id": "5363132200178437734", "nombre": "[SOLUTIONS] SOLUTIONS Team" },
+    { "team_id": "6420731019314744460", "nombre": "[SDC] Soporte&Customer Services Team" },
+    { "team_id": "2858340682070378133", "nombre": "AUDITORIA" }
+  ],
+  "jira_people": [],
+  "at_people": [],
+  "project_team_mappings": [],
+  "person_mappings": []
+}
