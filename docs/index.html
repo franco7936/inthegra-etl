@@ -24,10 +24,10 @@
           <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav ms-auto align-items-lg-center">
               <li class="nav-item"><a class="nav-link active" href="index.html" aria-current="page">Inicio</a></li>
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Reportes</a>
-                <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="reporte-horas.html">Horas de equipos</a></li>
+              <li class="nav-item reports-menu">
+                <button class="reports-menu-button" type="button" aria-haspopup="true">Reportes</button>
+                <ul class="reports-menu-list" aria-label="Reportes disponibles">
+                  <li><a class="reports-menu-link" href="reporte-horas.html">Reporte de horas</a></li>
                 </ul>
               </li>
             </ul>
@@ -66,7 +66,7 @@
               <p class="eyebrow mb-2">Reportes</p>
               <h2 class="h3 fw-bold mb-0">Disponibles</h2>
             </div>
-            <p class="text-secondary mb-0 col-md-5">Por ahora mantenemos los reportes en la barra superior. Cuando crezca el listado, conviene pasar a una navegacion lateral.</p>
+            <p class="text-secondary mb-0 col-md-5">El listado principal queda visible en la home y tambien en el menu superior para acceso rapido.</p>
           </div>
 
           <div class="row g-4">
@@ -74,7 +74,7 @@
               <a class="card report-card h-100 text-decoration-none text-dark" href="reporte-horas.html">
                 <div class="card-body p-4">
                   <span class="report-icon mb-3">H</span>
-                  <h3 class="h5 fw-bold">Horas de equipos</h3>
+                  <h3 class="h5 fw-bold">Reporte de horas</h3>
                   <p class="text-secondary mb-4">Analisis mensual de horas registradas, capacidad, disponibilidad y utilizacion por equipo.</p>
                   <span class="fw-bold text-inthegra">Abrir reporte</span>
                 </div>
