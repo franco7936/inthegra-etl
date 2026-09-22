@@ -1,11 +1,9 @@
 name: ETL Semanal — Inthegra
 
 on:
-  # Corre todos los dias a las 3:00 AM UTC (12 AM Argentina)
   schedule:
     - cron: '0 3 * * *'
 
-  # Permite correrlo manualmente desde GitHub Actions
   workflow_dispatch:
     inputs:
       modo:
@@ -24,11 +22,6 @@ on:
         options:
           - 'true'
           - 'false'
-      worklogs_mes:
-        description: 'Mes completo para datos AT (YYYY-MM). Si queda vacio usa ultimos 60 dias.'
-        required: false
-        default: ''
-        type: string
 
 concurrency:
   group: etl-${{ github.ref }}
@@ -36,7 +29,7 @@ concurrency:
 
 jobs:
   etl:
-    name: Extraccion de datos (Jira + AT → Turso)
+    name: ETL principal Jira + ActivityTimeline → Turso
     runs-on: ubuntu-24.04
     timeout-minutes: 120
 
@@ -68,8 +61,8 @@ jobs:
           QMETRY_PROJECT_KEY=${{ secrets.QMETRY_PROJECT_KEY }}
           EOF
 
-      - name: Job 1 — ETL base Jira y ActivityTimeline
-        timeout-minutes: 80
+      - name: Ejecutar ETL principal
+        timeout-minutes: 110
         run: |
           MODO="${{ github.event.inputs.modo || 'incremental' }}"
           SIN_JSM="${{ github.event.inputs.sin_jsm || 'true' }}"
@@ -85,55 +78,13 @@ jobs:
           echo "Corriendo: python etl.py $ARGS"
           python etl.py $ARGS
 
-      - name: Job 2 — Preparar esquema AT y mapeos
-        timeout-minutes: 10
-        run: python aplicar_migraciones_at.py
-
-      - name: Job 3 — Horas reales AT en at_workload
-        timeout-minutes: 25
-        run: |
-          WORKLOGS_MES="${{ github.event.inputs.worklogs_mes || '' }}"
-
-          if [ -n "$WORKLOGS_MES" ]; then
-            echo "Corriendo worklogs AT para mes completo: $WORKLOGS_MES"
-            python extract_at_worklogs.py --mes "$WORKLOGS_MES"
-          else
-            echo "Corriendo worklogs AT para ultimos 60 dias"
-            python extract_at_worklogs.py --dias 60
-          fi
-
-      - name: Job 4 — Eventos AT detallados
-        timeout-minutes: 25
-        run: |
-          WORKLOGS_MES="${{ github.event.inputs.worklogs_mes || '' }}"
-
-          if [ -n "$WORKLOGS_MES" ]; then
-            echo "Corriendo eventos AT para mes completo: $WORKLOGS_MES"
-            python extract_at_eventos_detalle.py --mes "$WORKLOGS_MES"
-          else
-            echo "Corriendo eventos AT para ultimos 60 dias"
-            python extract_at_eventos_detalle.py --dias 60
-          fi
-
-      - name: Job 5 — Refresh vistas activas
-        timeout-minutes: 10
-        run: python refresh_vistas_limpio.py
-
-      - name: Job 6 — Reaplicar vistas AT finales
-        timeout-minutes: 10
-        run: python aplicar_migraciones_at.py
-
-      - name: Job 7 — Validacion final modelo AT
-        timeout-minutes: 5
-        run: python validar_modelo_at.py
-
       - name: Resultado correcto
         if: success()
         run: echo "✓ ETL completado exitosamente — $(date)"
 
       - name: Resultado con error
         if: failure()
-        run: echo "✗ ETL falló — revisar el paso anterior en los logs"
+        run: echo "✗ ETL falló — revisar el paso Ejecutar ETL principal"
 
       - name: Resultado cancelado
         if: cancelled()
