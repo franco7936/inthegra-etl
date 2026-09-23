@@ -31,7 +31,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="contentGrid reportsGridSix">
+      <section className="contentGrid reportsGridFive">
         <Link className="reportTile" href="/reportes/horas">
           <span>H</span>
           <h2>Reporte de horas</h2>
