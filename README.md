@@ -68,6 +68,7 @@ Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQ
 | `VW_REPORTE_HORAS_PERSONA_TIPO` | Agrupacion por fecha, persona, proyecto y tipo de actividad. |
 | `VW_REPORTE_HORAS_EQUIPO_TIPO` | Agrupacion por fecha, proyecto/equipo y tipo de actividad. |
 | `VW_INDICADORES_ENTREGA_CALIDAD` | Indicadores ejecutivos de entrega, horas, soporte, SLA, roadmap y retrabajo. |
+| `VW_INVERSION_ESTRATEGICA` | Horas destinadas agrupadas por proyecto y epica. |
 
 ## Web dinamica
 
@@ -91,6 +92,7 @@ Endpoints iniciales:
 | `/api/health` | Valida conexion de la web con Turso. |
 | `/api/reportes/horas` | Devuelve datos del reporte de horas filtrados por fecha, proyecto y tipo de actividad. |
 | `/api/reportes/entrega-calidad` | Devuelve indicadores ejecutivos de entrega y calidad de servicio. |
+| `/api/reportes/inversion-estrategica` | Devuelve horas por proyecto y epica para inversion estrategica. |
 
 Pantallas iniciales:
 
@@ -99,30 +101,51 @@ Pantallas iniciales:
 | `/` | Home del portal. |
 | `/reportes/horas` | Reporte dinamico de horas. |
 | `/reportes/entrega-calidad` | Indicadores de Entrega y Calidad de Servicio. |
+| `/reportes/inversion-estrategica` | Inversiones Estrategicas por proyecto y epica. |
 
 ## Contrato esperado para `VW_INDICADORES_ENTREGA_CALIDAD`
 
-La nueva pantalla ya existe. Mientras la vista SQL no exista, usa datos de referencia del mockup y muestra estado `Modelo pendiente`.
+La pantalla ya existe. Mientras la vista SQL no exista, usa datos de referencia del mockup y muestra estado `Modelo pendiente`.
 
-Columnas esperadas para la vista:
+Columnas esperadas:
 
 | Columna | Uso |
 | --- | --- |
 | `fecha_desde` | Inicio del periodo del indicador. |
 | `fecha_hasta` | Fin del periodo del indicador. |
 | `colaboradores` | Cantidad de colaboradores base del calculo. |
-| `seccion_id` | ID de seccion: por ejemplo `generales`, `saas`, `custom`. |
+| `seccion_id` | ID de seccion: `generales`, `saas`, `custom`. |
 | `seccion_titulo` | Titulo visible de la seccion. |
 | `indicador_id` | ID tecnico del indicador. |
 | `titulo` | Titulo visible de la tarjeta. |
 | `valor` | Valor numerico base. |
 | `unidad` | Unidad: `hrs`, `%`, etc. |
-| `valor_formateado` | Valor final para mostrar. Ejemplo: `3180 hrs`. |
+| `valor_formateado` | Valor final para mostrar. |
 | `detalle` | Texto secundario opcional. |
 | `tendencia` | `up`, `down` o `neutral`. |
 | `estado` | `default`, `success`, `soft` o `danger`. |
 | `orden_seccion` | Orden de la seccion. |
-| `orden_indicador` | Orden de la tarjeta dentro de la seccion. |
+| `orden_indicador` | Orden de la tarjeta. |
+
+## Contrato esperado para `VW_INVERSION_ESTRATEGICA`
+
+Este reporte debe agrupar horas por proyecto y por epica. No incluye los campos inferiores del mockup.
+
+Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.
+
+Columnas esperadas:
+
+| Columna | Uso |
+| --- | --- |
+| `fecha` | Fecha base para filtrar el periodo. |
+| `project_id` | ID interno del proyecto desde `map_equipo_proyecto`. |
+| `proyecto` | Nombre visible del proyecto. |
+| `project_key_rpt` | Key Jira del proyecto. |
+| `epic_key` | Key de la epica Jira. |
+| `epica` | Nombre o resumen visible de la epica. |
+| `horas` | Total de horas destinadas a esa epica en el periodo. |
+| `estado` | Estado visible opcional de la epica. |
+| `color` | Color visual opcional: `blue`, `orange`, `red`, `green`. |
 
 ## Deploy gratis en Vercel
 
@@ -248,5 +271,6 @@ Estas tablas ya no se crean en el modelo v2:
 1. Esperar que termine la corrida full del ETL.
 2. Verificar que existan las vistas `VW_REPORTE_HORAS_*` en Turso.
 3. Definir la logica de calculo para `VW_INDICADORES_ENTREGA_CALIDAD`.
-4. Crear la vista SQL de indicadores en `etl.py`.
-5. Probar `/api/health`, `/reportes/horas` y `/reportes/entrega-calidad`.
+4. Definir la logica de calculo para `VW_INVERSION_ESTRATEGICA`.
+5. Crear ambas vistas SQL en `etl.py`.
+6. Probar `/api/health`, `/reportes/horas`, `/reportes/entrega-calidad` y `/reportes/inversion-estrategica`.
