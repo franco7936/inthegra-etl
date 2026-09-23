@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function todayRange() {
   const now = new Date();
@@ -11,51 +11,43 @@ function todayRange() {
   return { from, to };
 }
 
-function formatValue(value, unit) {
-  const formatted = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(Number(value || 0));
-  return unit ? `${formatted} ${unit}` : formatted;
+function formatNumber(value) {
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(Number(value || 0));
 }
 
-function Trend({ value }) {
-  if (value === 'up') return <span className="qualityTrend up">▲</span>;
-  if (value === 'down') return <span className="qualityTrend down">▼</span>;
-  return <span className="qualityTrend neutral">•</span>;
-}
-
-function HighlightCard({ item }) {
+function Gauge({ value, label, tone = 'orange' }) {
+  const safeValue = Math.max(0, Math.min(100, Number(value || 0)));
   return (
-    <article className={`qualityHighlight state-${item.estado || 'default'}`}>
-      <span>{item.indicador}</span>
-      <strong>{formatValue(item.valor, item.unidad)}</strong>
-    </article>
-  );
-}
-
-function ProjectQualityCard({ project }) {
-  return (
-    <article className="qualityProjectCard">
-      <header>
-        <div>
-          <h2>{project.proyecto}</h2>
-          <p>{project.project_key_rpt || 'Proyecto'}</p>
-        </div>
-      </header>
-      <div className="qualityMetricList">
-        {project.indicadores.map((item) => (
-          <div className={`qualityMetric state-${item.estado || 'default'}`} key={item.indicador}>
-            <span>{item.indicador}</span>
-            <strong>{formatValue(item.valor, item.unidad)}</strong>
-            <Trend value={item.tendencia} />
-          </div>
-        ))}
+    <div className="qaGauge" style={{ '--value': `${safeValue}%` }}>
+      <div className={`qaGaugeCircle tone-${tone}`}>
+        <span>{formatNumber(safeValue)}%</span>
       </div>
-    </article>
+      <strong>{label}</strong>
+    </div>
   );
+}
+
+function MetricProgress({ metric }) {
+  const raw = Number(metric.valor_actual || 0);
+  const target = Number(metric.objetivo_valor || 0);
+  let percent = 0;
+  if (target > 0) {
+    percent = metric.sentido === 'menor_mejor' ? Math.max(0, Math.min(100, 100 - (raw / target) * 100)) : Math.max(0, Math.min(100, (raw / target) * 100));
+  }
+  return (
+    <div className="qaProgress" aria-label={`Cumplimiento ${metric.metrica}`}>
+      <span style={{ width: `${percent}%` }} />
+    </div>
+  );
+}
+
+function StatePill({ state }) {
+  return <span className={`qaState state-${state === 'OK' ? 'ok' : 'review'}`}>{state}</span>;
 }
 
 export default function CalidadPerformancePage() {
   const initial = todayRange();
-  const [filters, setFilters] = useState({ from: initial.from, to: initial.to, projectId: '' });
+  const [filters, setFilters] = useState({ from: initial.from, to: initial.to });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,7 +55,7 @@ export default function CalidadPerformancePage() {
   async function loadData(nextFilters = filters) {
     setLoading(true);
     setError('');
-    const params = new URLSearchParams(Object.entries(nextFilters).filter(([, value]) => value));
+    const params = new URLSearchParams(nextFilters);
     try {
       const response = await fetch(`/api/reportes/calidad-performance?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json();
@@ -82,30 +74,35 @@ export default function CalidadPerformancePage() {
   }, []);
 
   const modelPending = data && data.modelReady === false;
+  const statusChart = useMemo(() => {
+    const summary = data?.summary || { total: 0, ok: 0, revisar: 0 };
+    const okPct = summary.total ? Math.round((summary.ok / summary.total) * 100) : 0;
+    return { okPct, reviewPct: 100 - okPct };
+  }, [data]);
 
   return (
-    <main className="shell qualityShell">
+    <main className="shell qualityShell qaShell">
       <nav className="topbar">
         <Link className="brand" href="/">
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
           <span>
             <strong>Inthegra Reports</strong>
-            <small>Calidad y performance</small>
+            <small>Metricas QA</small>
           </span>
         </Link>
         <Link className="navLink" href="/">Inicio</Link>
       </nav>
 
-      <section className="qualityHeader">
+      <section className="qualityHeader qaHeader">
         <div>
-          <p className="eyebrow">Operacion</p>
-          <h1>Calidad y performance operativa</h1>
-          <p>Seguimiento de estabilidad, retrabajo, bugs, throughput y cumplimiento operativo por proyecto.</p>
+          <p className="eyebrow">QA</p>
+          <h1>Tablero minimo de metricas QA - Inthegra</h1>
+          <p>Medir pocas metricas, pero utiles para decidir, priorizar mejoras y reducir riesgo en releases.</p>
         </div>
         <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
       </section>
 
-      <section className="qualityFilters">
+      <section className="qualityFilters qaFilters">
         <label>
           Desde
           <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
@@ -114,15 +111,6 @@ export default function CalidadPerformancePage() {
           Hasta
           <input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
         </label>
-        <label>
-          Proyecto
-          <select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}>
-            <option value="">Todos</option>
-            {(data?.filtersData?.projects || []).map((project) => (
-              <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>
-            ))}
-          </select>
-        </label>
         <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
       </section>
 
@@ -130,17 +118,73 @@ export default function CalidadPerformancePage() {
       {modelPending && <div className="errorBox">{data.setupMessage}</div>}
       {data?.demo && <div className="warningBox">Vista previa con datos de referencia. Los valores reales se activan cuando exista la vista SQL.</div>}
 
-      <section className="qualityHighlights">
-        {(data?.highlights || []).map((item) => <HighlightCard key={item.indicador} item={item} />)}
+      <section className="qaOverview">
+        <article className="qaSummaryCard">
+          <span>Metricas OK</span>
+          <strong>{data?.summary?.ok || 0}/{data?.summary?.total || 0}</strong>
+          <p>Indicadores dentro del objetivo sugerido.</p>
+        </article>
+        <article className="qaSummaryCard review">
+          <span>Metricas a revisar</span>
+          <strong>{data?.summary?.revisar || 0}</strong>
+          <p>Puntos con riesgo o falta de evidencia.</p>
+        </article>
+        <Gauge value={statusChart.okPct} label="Estado general" tone="green" />
+        <Gauge value={data?.summary?.coberturaPromedio || 0} label="Cobertura promedio" tone="orange" />
       </section>
 
-      {loading ? (
-        <section className="qualityGrid"><div className="emptyState">Cargando indicadores...</div></section>
-      ) : (
-        <section className="qualityGrid">
-          {(data?.projects || []).map((project) => <ProjectQualityCard key={project.project_id || project.proyecto} project={project} />)}
-        </section>
-      )}
+      <section className="qaTablePanel">
+        <div className="panelHeader">
+          <div>
+            <h2>Metricas minimas</h2>
+            <p>{filters.from} a {filters.to}</p>
+          </div>
+        </div>
+        {loading ? (
+          <div className="emptyState">Cargando metricas QA...</div>
+        ) : (
+          <div className="tableWrap">
+            <table className="qaTable">
+              <thead>
+                <tr>
+                  <th>Metrica minima</th>
+                  <th>Valor actual</th>
+                  <th>Objetivo sugerido</th>
+                  <th>Estado</th>
+                  <th>Lectura rapida</th>
+                  <th>Fuente</th>
+                  <th>Cumplimiento</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.metrics || []).map((metric) => (
+                  <tr key={metric.metric_id}>
+                    <td><strong>{metric.metrica}</strong></td>
+                    <td>{metric.valor_formateado}</td>
+                    <td>{metric.objetivo}</td>
+                    <td><StatePill state={metric.estado} /></td>
+                    <td>{metric.lectura}</td>
+                    <td>{metric.fuente}</td>
+                    <td><MetricProgress metric={metric} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="qaAdditionalPanel">
+        <h2>Metricas adicionales sugeridas para sumar al modelo</h2>
+        <div className="qaAdditionalGrid">
+          {(data?.additionalMetrics || []).map((item) => (
+            <article key={item.metrica}>
+              <h3>{item.metrica}</h3>
+              <p>{item.motivo}</p>
+            </article>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
