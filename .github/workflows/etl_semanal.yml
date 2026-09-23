@@ -30,6 +30,22 @@ on:
         options:
           - 'true'
           - 'false'
+      sin_at:
+        description: 'Omitir ActivityTimeline'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      sin_worklogs:
+        description: 'Omitir worklogs de Jira'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 concurrency:
   group: etl-${{ github.ref }}
@@ -71,10 +87,15 @@ jobs:
 
       - name: Ejecutar ETL principal
         timeout-minutes: 110
+        env:
+          AT_WORKLOG_MAX_PAGES_PER_TEAM: '25'
+          AT_WORKLOG_MAX_ROWS_PER_TEAM: '10000'
         run: |
           MODO="${{ github.event.inputs.modo || 'incremental' }}"
           RECREAR_MODELO="${{ github.event.inputs.recrear_modelo || 'false' }}"
           SIN_JSM="${{ github.event.inputs.sin_jsm || 'true' }}"
+          SIN_AT="${{ github.event.inputs.sin_at || 'false' }}"
+          SIN_WORKLOGS="${{ github.event.inputs.sin_worklogs || 'false' }}"
 
           ARGS=""
           if [ "$MODO" = "full" ]; then
@@ -85,6 +106,12 @@ jobs:
           fi
           if [ "$SIN_JSM" = "true" ]; then
             ARGS="$ARGS --sin-jsm"
+          fi
+          if [ "$SIN_AT" = "true" ]; then
+            ARGS="$ARGS --sin-at"
+          fi
+          if [ "$SIN_WORKLOGS" = "true" ]; then
+            ARGS="$ARGS --sin-worklogs"
           fi
 
           echo "Corriendo: python etl_runner.py $ARGS"
