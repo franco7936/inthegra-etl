@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import './status.module.css';
 
 function defaultWeek() {
   const now = new Date();
