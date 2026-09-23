@@ -10,7 +10,7 @@ El proyecto centraliza datos de Jira y ActivityTimeline en Turso, los asocia con
 Jira + ActivityTimeline
         |
         v
-GitHub Actions -> etl.py
+GitHub Actions -> etl_runner.py -> etl.py
         |
         v
 Turso
@@ -22,7 +22,9 @@ Vistas SQL de reporte
 Vercel / Next.js / web/
 ```
 
-- GitHub Actions corre el ETL.
+- GitHub Actions corre el ETL usando `etl_runner.py`.
+- `etl.py` sigue siendo el proceso principal del ETL.
+- `etl_runner.py` aplica protecciones operativas antes de ejecutar `etl.py`: corta paginas repetidas de ActivityTimeline, reduce ruido de logs HTTP y aplica vistas complementarias versionadas.
 - Turso guarda la base de datos.
 - Next.js en Vercel muestra la web dinamica.
 - La web consulta Turso desde API routes del lado servidor, sin exponer `TURSO_TOKEN` en el navegador.
@@ -61,7 +63,7 @@ Definiciones SQL versionadas:
 
 | Archivo | Uso |
 | --- | --- |
-| `sql/vw_novedades_laborales.sql` | Definicion ejecutable de `VW_NOVEDADES_LABORALES` hasta integrarla dentro de `etl.py`. |
+| `sql/vw_novedades_laborales.sql` | Definicion ejecutable de `VW_NOVEDADES_LABORALES`. `etl_runner.py` la aplica al refrescar vistas. |
 
 ## Web dinamica
 
@@ -153,7 +155,6 @@ Tambien estan pendientes de definicion/creacion estas vistas:
 
 - `VW_INDICADORES_ENTREGA_CALIDAD`
 - `VW_INVERSION_ESTRATEGICA`
-- Integrar `VW_NOVEDADES_LABORALES` dentro de `etl.py` usando `sql/vw_novedades_laborales.sql`.
 
 ## Deploy gratis en Vercel
 
@@ -182,6 +183,12 @@ Workflow principal:
 .github/workflows/etl_semanal.yml
 ```
 
+El workflow ejecuta:
+
+```bash
+python etl_runner.py [args]
+```
+
 Primera corrida recomendada del modelo v2:
 
 ```text
@@ -198,6 +205,8 @@ recrear_modelo = false
 sin_jsm = true
 ```
 
+Si ActivityTimeline repite la misma pagina de usuarios, `etl_runner.py` corta la paginacion para evitar timeouts como `The action 'Ejecutar ETL principal' has timed out after 110 minutes`.
+
 ## Desarrollo local
 
 ETL:
@@ -206,8 +215,8 @@ ETL:
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python etl.py --solo-conexion
-python etl.py --recrear-modelo --full --sin-jsm
-python etl.py --sin-jsm
+python etl_runner.py --recrear-modelo --full --sin-jsm
+python etl_runner.py --sin-jsm
 ```
 
 Web:
@@ -221,7 +230,7 @@ npm run dev
 
 ## Proximos pasos
 
-1. Esperar que termine la corrida full del ETL.
-2. Verificar que existan las vistas `VW_REPORTE_HORAS_*` en Turso.
-3. Integrar las vistas SQL pendientes en `etl.py`.
+1. Ejecutar nuevamente el workflow `ETL Semanal` en modo incremental.
+2. Si el modelo todavia no esta limpio, ejecutar una vez con `modo=full`, `recrear_modelo=true`, `sin_jsm=true`.
+3. Verificar que existan las vistas `VW_REPORTE_HORAS_*` y `VW_NOVEDADES_LABORALES` en Turso.
 4. Probar todos los reportes desde Vercel.
