@@ -69,6 +69,7 @@ Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQ
 | `VW_REPORTE_HORAS_EQUIPO_TIPO` | Agrupacion por fecha, proyecto/equipo y tipo de actividad. |
 | `VW_INDICADORES_ENTREGA_CALIDAD` | Indicadores ejecutivos de entrega, horas, soporte, SLA, roadmap y retrabajo. |
 | `VW_INVERSION_ESTRATEGICA` | Horas destinadas agrupadas por proyecto y epica. |
+| `VW_CALIDAD_PERFORMANCE_OPERATIVA` | Indicadores de calidad y performance por proyecto. |
 
 ## Web dinamica
 
@@ -93,6 +94,7 @@ Endpoints iniciales:
 | `/api/reportes/horas` | Devuelve datos del reporte de horas filtrados por fecha, proyecto y tipo de actividad. |
 | `/api/reportes/entrega-calidad` | Devuelve indicadores ejecutivos de entrega y calidad de servicio. |
 | `/api/reportes/inversion-estrategica` | Devuelve horas por proyecto y epica para inversion estrategica. |
+| `/api/reportes/calidad-performance` | Devuelve indicadores de calidad y performance operativa. |
 
 Pantallas iniciales:
 
@@ -102,6 +104,7 @@ Pantallas iniciales:
 | `/reportes/horas` | Reporte dinamico de horas. |
 | `/reportes/entrega-calidad` | Indicadores de Entrega y Calidad de Servicio. |
 | `/reportes/inversion-estrategica` | Inversiones Estrategicas por proyecto y epica. |
+| `/reportes/calidad-performance` | Calidad y performance operativa por proyecto. |
 
 ## Contrato esperado para `VW_INDICADORES_ENTREGA_CALIDAD`
 
@@ -131,8 +134,6 @@ Columnas esperadas:
 
 Este reporte debe agrupar horas por proyecto y por epica. No incluye los campos inferiores del mockup.
 
-Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.
-
 Columnas esperadas:
 
 | Columna | Uso |
@@ -146,6 +147,24 @@ Columnas esperadas:
 | `horas` | Total de horas destinadas a esa epica en el periodo. |
 | `estado` | Estado visible opcional de la epica. |
 | `color` | Color visual opcional: `blue`, `orange`, `red`, `green`. |
+
+## Contrato esperado para `VW_CALIDAD_PERFORMANCE_OPERATIVA`
+
+Este reporte muestra performance y calidad por proyecto. Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.
+
+Columnas esperadas:
+
+| Columna | Uso |
+| --- | --- |
+| `fecha` | Fecha base para filtrar el periodo. |
+| `project_id` | ID interno del proyecto. |
+| `proyecto` | Nombre visible del proyecto. |
+| `project_key_rpt` | Key Jira del proyecto. |
+| `indicador` | Nombre del indicador: throughput, bugs, retrabajo, lead time, SLA, etc. |
+| `valor` | Valor numerico del indicador. |
+| `unidad` | Unidad visible: `%`, `issues`, `bugs`, `dias`, `casos`. |
+| `estado` | Estado visual: `success`, `warning`, `danger` o `default`. |
+| `tendencia` | `up`, `down` o `neutral`. |
 
 ## Deploy gratis en Vercel
 
@@ -272,5 +291,6 @@ Estas tablas ya no se crean en el modelo v2:
 2. Verificar que existan las vistas `VW_REPORTE_HORAS_*` en Turso.
 3. Definir la logica de calculo para `VW_INDICADORES_ENTREGA_CALIDAD`.
 4. Definir la logica de calculo para `VW_INVERSION_ESTRATEGICA`.
-5. Crear ambas vistas SQL en `etl.py`.
-6. Probar `/api/health`, `/reportes/horas`, `/reportes/entrega-calidad` y `/reportes/inversion-estrategica`.
+5. Definir la logica de calculo para `VW_CALIDAD_PERFORMANCE_OPERATIVA`.
+6. Crear las vistas SQL pendientes en `etl.py`.
+7. Probar todos los reportes desde Vercel.
