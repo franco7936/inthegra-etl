@@ -3,6 +3,12 @@ import { getTursoClient, rowsFrom } from '@/lib/turso';
 
 export const dynamic = 'force-dynamic';
 
+const REQUIRED_VIEWS = [
+  'VW_REPORTE_HORAS_DETALLE',
+  'VW_REPORTE_HORAS_PERSONA_TIPO',
+  'VW_REPORTE_HORAS_EQUIPO_TIPO',
+];
+
 function defaultDates() {
   const now = new Date();
   const to = now.toISOString().slice(0, 10);
@@ -44,11 +50,41 @@ async function queryRows(db, sql, args = []) {
   return rowsFrom(result);
 }
 
+async function getMissingViews(db) {
+  const placeholders = REQUIRED_VIEWS.map(() => '?').join(',');
+  const existing = await queryRows(db, `
+    SELECT name
+    FROM sqlite_schema
+    WHERE type = 'view' AND name IN (${placeholders})
+  `, REQUIRED_VIEWS);
+  const existingNames = new Set(existing.map((row) => row.name));
+  return REQUIRED_VIEWS.filter((name) => !existingNames.has(name));
+}
+
+function emptyPayload(filters, missingViews) {
+  return {
+    ok: true,
+    modelReady: false,
+    setupMessage: `Faltan vistas en Turso: ${missingViews.join(', ')}. Ejecutar el ETL con modo=full y recrear_modelo=true.`,
+    filters,
+    summary: { horas: 0, registros: 0, personas: 0, proyectos: 0 },
+    byPerson: [],
+    byTeam: [],
+    filtersData: { projects: [], eventTypes: [] },
+  };
+}
+
 export async function GET(request) {
   try {
     const filters = readFilters(request);
-    const { where, args } = buildWhere(filters);
     const db = getTursoClient();
+    const missingViews = await getMissingViews(db);
+
+    if (missingViews.length) {
+      return NextResponse.json(emptyPayload(filters, missingViews));
+    }
+
+    const { where, args } = buildWhere(filters);
 
     const [summaryRows, byPerson, byTeam, projects, eventTypes] = await Promise.all([
       queryRows(db, `
@@ -107,6 +143,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       ok: true,
+      modelReady: true,
       filters,
       summary: summaryRows[0] || { horas: 0, registros: 0, personas: 0, proyectos: 0 },
       byPerson,
