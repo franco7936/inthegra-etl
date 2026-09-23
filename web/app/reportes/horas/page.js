@@ -107,6 +107,7 @@ export default function ReporteHorasPage() {
   }, []);
 
   const rows = view === 'persona' ? data?.byPerson || [] : data?.byTeam || [];
+  const modelPending = data && data.modelReady === false;
 
   return (
     <main className="shell reportShell">
@@ -127,7 +128,9 @@ export default function ReporteHorasPage() {
           <h1>Reporte de horas</h1>
           <p>Horas por persona y por proyecto, agrupadas por tipo de actividad.</p>
         </div>
-        <span className={error ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : 'Datos actualizados'}</span>
+        <span className={error || modelPending ? 'status error' : 'status'}>
+          {loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}
+        </span>
       </section>
 
       <section className="filtersPanel">
@@ -161,6 +164,7 @@ export default function ReporteHorasPage() {
       </section>
 
       {error && <div className="errorBox">{error}</div>}
+      {modelPending && <div className="errorBox">{data.setupMessage}</div>}
 
       <section className="kpiGrid">
         <article><span>Horas</span><strong>{formatHours(data?.summary?.horas)}</strong></article>
