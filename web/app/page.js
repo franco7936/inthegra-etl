@@ -11,7 +11,10 @@ export default function HomePage() {
             <small>Portal operativo</small>
           </span>
         </a>
-        <Link className="navLink" href="/reportes/horas">Reporte de horas</Link>
+        <div className="navActions">
+          <Link className="navLink" href="/reportes/horas">Reporte de horas</Link>
+          <Link className="navLink" href="/reportes/entrega-calidad">Entrega y calidad</Link>
+        </div>
       </nav>
 
       <section className="hero">
@@ -31,11 +34,11 @@ export default function HomePage() {
           <h2>Reporte de horas</h2>
           <p>Horas por persona, proyecto y tipo de actividad con filtros dinamicos.</p>
         </Link>
-        <article className="reportTile muted">
-          <span>+</span>
-          <h2>Proximos reportes</h2>
-          <p>La estructura queda lista para sumar nuevos tableros conectados a vistas SQL.</p>
-        </article>
+        <Link className="reportTile" href="/reportes/entrega-calidad">
+          <span>I</span>
+          <h2>Entrega y calidad de servicio</h2>
+          <p>Indicadores generales, SaaS y desarrollo a medida para seguimiento ejecutivo.</p>
+        </Link>
       </section>
     </main>
   );
