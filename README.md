@@ -67,6 +67,7 @@ Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQ
 | `VW_REPORTE_HORAS_DETALLE` | Detalle base con persona, proyecto, tipo de evento y tiempo. |
 | `VW_REPORTE_HORAS_PERSONA_TIPO` | Agrupacion por fecha, persona, proyecto y tipo de actividad. |
 | `VW_REPORTE_HORAS_EQUIPO_TIPO` | Agrupacion por fecha, proyecto/equipo y tipo de actividad. |
+| `VW_INDICADORES_ENTREGA_CALIDAD` | Indicadores ejecutivos de entrega, horas, soporte, SLA, roadmap y retrabajo. |
 
 ## Web dinamica
 
@@ -89,6 +90,7 @@ Endpoints iniciales:
 | --- | --- |
 | `/api/health` | Valida conexion de la web con Turso. |
 | `/api/reportes/horas` | Devuelve datos del reporte de horas filtrados por fecha, proyecto y tipo de actividad. |
+| `/api/reportes/entrega-calidad` | Devuelve indicadores ejecutivos de entrega y calidad de servicio. |
 
 Pantallas iniciales:
 
@@ -96,6 +98,31 @@ Pantallas iniciales:
 | --- | --- |
 | `/` | Home del portal. |
 | `/reportes/horas` | Reporte dinamico de horas. |
+| `/reportes/entrega-calidad` | Indicadores de Entrega y Calidad de Servicio. |
+
+## Contrato esperado para `VW_INDICADORES_ENTREGA_CALIDAD`
+
+La nueva pantalla ya existe. Mientras la vista SQL no exista, usa datos de referencia del mockup y muestra estado `Modelo pendiente`.
+
+Columnas esperadas para la vista:
+
+| Columna | Uso |
+| --- | --- |
+| `fecha_desde` | Inicio del periodo del indicador. |
+| `fecha_hasta` | Fin del periodo del indicador. |
+| `colaboradores` | Cantidad de colaboradores base del calculo. |
+| `seccion_id` | ID de seccion: por ejemplo `generales`, `saas`, `custom`. |
+| `seccion_titulo` | Titulo visible de la seccion. |
+| `indicador_id` | ID tecnico del indicador. |
+| `titulo` | Titulo visible de la tarjeta. |
+| `valor` | Valor numerico base. |
+| `unidad` | Unidad: `hrs`, `%`, etc. |
+| `valor_formateado` | Valor final para mostrar. Ejemplo: `3180 hrs`. |
+| `detalle` | Texto secundario opcional. |
+| `tendencia` | `up`, `down` o `neutral`. |
+| `estado` | `default`, `success`, `soft` o `danger`. |
+| `orden_seccion` | Orden de la seccion. |
+| `orden_indicador` | Orden de la tarjeta dentro de la seccion. |
 
 ## Deploy gratis en Vercel
 
@@ -220,6 +247,6 @@ Estas tablas ya no se crean en el modelo v2:
 
 1. Esperar que termine la corrida full del ETL.
 2. Verificar que existan las vistas `VW_REPORTE_HORAS_*` en Turso.
-3. Importar el repo en Vercel usando `web/` como root directory.
-4. Cargar `TURSO_URL` y `TURSO_TOKEN` en Vercel.
-5. Probar `/api/health` y luego `/reportes/horas`.
+3. Definir la logica de calculo para `VW_INDICADORES_ENTREGA_CALIDAD`.
+4. Crear la vista SQL de indicadores en `etl.py`.
+5. Probar `/api/health`, `/reportes/horas` y `/reportes/entrega-calidad`.
