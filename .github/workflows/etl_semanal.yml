@@ -14,6 +14,14 @@ on:
         options:
           - incremental
           - full
+      recrear_modelo:
+        description: 'Recrear modelo v2 desde cero (usar solo una vez)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
       sin_jsm:
         description: 'Omitir JSM (soporte)'
         required: false
@@ -65,11 +73,15 @@ jobs:
         timeout-minutes: 110
         run: |
           MODO="${{ github.event.inputs.modo || 'incremental' }}"
+          RECREAR_MODELO="${{ github.event.inputs.recrear_modelo || 'false' }}"
           SIN_JSM="${{ github.event.inputs.sin_jsm || 'true' }}"
 
           ARGS=""
           if [ "$MODO" = "full" ]; then
             ARGS="$ARGS --full"
+          fi
+          if [ "$RECREAR_MODELO" = "true" ]; then
+            ARGS="$ARGS --recrear-modelo"
           fi
           if [ "$SIN_JSM" = "true" ]; then
             ARGS="$ARGS --sin-jsm"
