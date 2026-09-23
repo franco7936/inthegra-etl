@@ -21,11 +21,10 @@ export default function HomePage() {
       <section className="hero">
         <div>
           <p className="eyebrow">Centro de informacion interna</p>
-          <h1>Reportes dinamicos para gestion operativa</h1>
+          <h1>Portal de reportes operativos Inthegra</h1>
           <p>
-            Portal conectado a Turso para consultar informacion generada por el ETL de Jira y ActivityTimeline.
+            Un espacio centralizado para consultar indicadores de gestion, seguimiento de equipos, entrega de valor e inversion operativa a partir de los datos integrados por el ETL.
           </p>
-          <Link className="primaryButton" href="/reportes/horas">Abrir reporte de horas</Link>
         </div>
       </section>
 
