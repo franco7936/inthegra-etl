@@ -55,6 +55,7 @@ Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQ
 | `VW_REPORTE_HORAS_PERSONA_TIPO` | Agrupacion por fecha, persona, proyecto y tipo de actividad. |
 | `VW_REPORTE_HORAS_EQUIPO_TIPO` | Agrupacion por fecha, proyecto/equipo y tipo de actividad. |
 | `VW_NOVEDADES_LABORALES` | Day off, feriados y horas extras por persona y por equipo. |
+| `VW_STATUS_SEMANAL_LIDERES` | Reporte semanal de status informado por lideres. |
 | `VW_INDICADORES_ENTREGA_CALIDAD` | Indicadores ejecutivos de entrega, horas, soporte, SLA, roadmap y retrabajo. |
 | `VW_INVERSION_ESTRATEGICA` | Horas destinadas agrupadas por proyecto y epica. |
 | `VW_QA_METRICAS_MINIMAS` | Tablero minimo de metricas QA. |
@@ -76,6 +77,7 @@ Endpoints:
 | `/api/health` | Valida conexion de la web con Turso. |
 | `/api/reportes/horas` | Reporte de horas. |
 | `/api/reportes/novedades-laborales` | Novedades laborales. |
+| `/api/reportes/status-semanal` | Status semanal de lideres. |
 | `/api/reportes/entrega-calidad` | Entrega y calidad de servicio. |
 | `/api/reportes/inversion-estrategica` | Inversion estrategica por proyecto y epica. |
 | `/api/reportes/calidad-performance` | Tablero minimo de metricas QA. |
@@ -87,9 +89,35 @@ Pantallas:
 | `/` | Home del portal. |
 | `/reportes/horas` | Reporte dinamico de horas. |
 | `/reportes/novedades-laborales` | Day off, feriados y horas extras por persona y equipo. |
+| `/reportes/status-semanal` | Reporte semanal de lideres con avances, riesgos, bloqueos y proximos pasos. |
 | `/reportes/entrega-calidad` | Indicadores de Entrega y Calidad de Servicio. |
 | `/reportes/inversion-estrategica` | Inversiones Estrategicas por proyecto y epica. |
 | `/reportes/calidad-performance` | Tablero minimo de metricas QA. |
+
+## Contrato esperado para `VW_STATUS_SEMANAL_LIDERES`
+
+Este reporte replica en la web el reporte semanal que hoy se completa en Excel por los lideres. Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.
+
+Columnas esperadas:
+
+| Columna | Uso |
+| --- | --- |
+| `semana` | Fecha de inicio o corte semanal. |
+| `equipo` | Equipo o vertical reportada. |
+| `lider` | Lider responsable del status. |
+| `proyecto` | Proyecto, iniciativa o frente de trabajo. |
+| `estado` | Estado visible del item. |
+| `salud` | Semaforo tecnico: `verde`, `amarillo`, `rojo` o `gris`. |
+| `avance_pct` | Avance porcentual del item. |
+| `prioridad` | Prioridad del seguimiento. |
+| `resumen` | Lectura ejecutiva del item. |
+| `avances` | Avances de la semana. |
+| `riesgos` | Riesgos identificados. |
+| `bloqueos` | Bloqueos o dependencias. |
+| `proximos_pasos` | Acciones siguientes. |
+| `fecha_actualizacion` | Ultima fecha de actualizacion del registro. |
+
+La pantalla permite filtrar por semana y equipo. Presenta resumen general, semaforo semanal, lectura ejecutiva y detalle por item.
 
 ## Contrato esperado para `VW_NOVEDADES_LABORALES`
 
@@ -153,6 +181,7 @@ Metricas minimas contempladas:
 
 Tambien estan pendientes de definicion/creacion estas vistas:
 
+- `VW_STATUS_SEMANAL_LIDERES`
 - `VW_INDICADORES_ENTREGA_CALIDAD`
 - `VW_INVERSION_ESTRATEGICA`
 
@@ -233,4 +262,5 @@ npm run dev
 1. Ejecutar nuevamente el workflow `ETL Semanal` en modo incremental.
 2. Si el modelo todavia no esta limpio, ejecutar una vez con `modo=full`, `recrear_modelo=true`, `sin_jsm=true`.
 3. Verificar que existan las vistas `VW_REPORTE_HORAS_*` y `VW_NOVEDADES_LABORALES` en Turso.
-4. Probar todos los reportes desde Vercel.
+4. Definir si `VW_STATUS_SEMANAL_LIDERES` se alimenta desde carga del Excel, desde una tabla manual o desde datos del ETL.
+5. Probar todos los reportes desde Vercel.
