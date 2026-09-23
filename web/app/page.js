@@ -17,6 +17,7 @@ export default function HomePage() {
           <Link className="navLink" href="/reportes/inversion-estrategica">Inversion estrategica</Link>
           <Link className="navLink" href="/reportes/calidad-performance">Calidad y performance</Link>
           <Link className="navLink" href="/reportes/novedades-laborales">Novedades laborales</Link>
+          <Link className="navLink" href="/reportes/status-semanal">Status semanal</Link>
         </div>
       </nav>
 
@@ -30,7 +31,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="contentGrid reportsGridFive">
+      <section className="contentGrid reportsGridSix">
         <Link className="reportTile" href="/reportes/horas">
           <span>H</span>
           <h2>Reporte de horas</h2>
@@ -55,6 +56,11 @@ export default function HomePage() {
           <span>N</span>
           <h2>Novedades laborales</h2>
           <p>Day off, feriados y horas extras por persona y por equipo.</p>
+        </Link>
+        <Link className="reportTile" href="/reportes/status-semanal">
+          <span>S</span>
+          <h2>Status semanal</h2>
+          <p>Reporte semanal de lideres con avances, riesgos, bloqueos y proximos pasos.</p>
         </Link>
       </section>
     </main>
