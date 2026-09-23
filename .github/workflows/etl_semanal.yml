@@ -87,8 +87,8 @@ jobs:
             ARGS="$ARGS --sin-jsm"
           fi
 
-          echo "Corriendo: python etl.py $ARGS"
-          python etl.py $ARGS
+          echo "Corriendo: python etl_runner.py $ARGS"
+          python etl_runner.py $ARGS
 
       - name: Resultado correcto
         if: success()
