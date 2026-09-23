@@ -28,22 +28,7 @@ Vercel / Next.js / web/
 - La web consulta Turso desde API routes del lado servidor, sin exponer `TURSO_TOKEN` en el navegador.
 - `docs/` queda como version estatica anterior publicada por GitHub Pages, pero el camino principal pasa a ser `web/`.
 
-## Estructura del repositorio
-
-```text
-.github/workflows/etl_semanal.yml   Automatizacion principal del ETL
-.github/workflows/pages.yml         Publicacion estatica anterior desde docs/
-docs/                               Portal estatico anterior
-web/                                Portal dinamico Next.js para Vercel
-etl.py                              Proceso principal Jira + ActivityTimeline -> Turso
-turso_conn.py                       Adaptador HTTP a Turso usado por Python
-requirements.txt                    Dependencias Python
-README.md                           Documentacion del proyecto
-```
-
 ## Modelo vigente
-
-El modelo vigente es el modelo v2.
 
 Tablas principales:
 
@@ -69,34 +54,23 @@ Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQ
 | `VW_REPORTE_HORAS_EQUIPO_TIPO` | Agrupacion por fecha, proyecto/equipo y tipo de actividad. |
 | `VW_INDICADORES_ENTREGA_CALIDAD` | Indicadores ejecutivos de entrega, horas, soporte, SLA, roadmap y retrabajo. |
 | `VW_INVERSION_ESTRATEGICA` | Horas destinadas agrupadas por proyecto y epica. |
-| `VW_CALIDAD_PERFORMANCE_OPERATIVA` | Indicadores de calidad y performance por proyecto. |
+| `VW_QA_METRICAS_MINIMAS` | Tablero minimo de metricas QA. |
 
 ## Web dinamica
 
-La app esta en:
+La app esta en `web/`.
 
-```text
-web/
-```
-
-Tecnologia:
-
-- Next.js
-- API routes server-side
-- Turso con `@libsql/client`
-- Deploy recomendado: Vercel free tier
-
-Endpoints iniciales:
+Endpoints:
 
 | Endpoint | Uso |
 | --- | --- |
 | `/api/health` | Valida conexion de la web con Turso. |
-| `/api/reportes/horas` | Devuelve datos del reporte de horas filtrados por fecha, proyecto y tipo de actividad. |
-| `/api/reportes/entrega-calidad` | Devuelve indicadores ejecutivos de entrega y calidad de servicio. |
-| `/api/reportes/inversion-estrategica` | Devuelve horas por proyecto y epica para inversion estrategica. |
-| `/api/reportes/calidad-performance` | Devuelve indicadores de calidad y performance operativa. |
+| `/api/reportes/horas` | Reporte de horas. |
+| `/api/reportes/entrega-calidad` | Entrega y calidad de servicio. |
+| `/api/reportes/inversion-estrategica` | Inversion estrategica por proyecto y epica. |
+| `/api/reportes/calidad-performance` | Tablero minimo de metricas QA. |
 
-Pantallas iniciales:
+Pantallas:
 
 | Ruta | Uso |
 | --- | --- |
@@ -104,67 +78,50 @@ Pantallas iniciales:
 | `/reportes/horas` | Reporte dinamico de horas. |
 | `/reportes/entrega-calidad` | Indicadores de Entrega y Calidad de Servicio. |
 | `/reportes/inversion-estrategica` | Inversiones Estrategicas por proyecto y epica. |
-| `/reportes/calidad-performance` | Calidad y performance operativa por proyecto. |
+| `/reportes/calidad-performance` | Tablero minimo de metricas QA. |
 
-## Contrato esperado para `VW_INDICADORES_ENTREGA_CALIDAD`
+## Contrato esperado para `VW_QA_METRICAS_MINIMAS`
 
-La pantalla ya existe. Mientras la vista SQL no exista, usa datos de referencia del mockup y muestra estado `Modelo pendiente`.
+Este reporte mide pocas metricas QA, pero utiles para decidir, priorizar mejoras y reducir riesgo en releases.
 
-Columnas esperadas:
-
-| Columna | Uso |
-| --- | --- |
-| `fecha_desde` | Inicio del periodo del indicador. |
-| `fecha_hasta` | Fin del periodo del indicador. |
-| `colaboradores` | Cantidad de colaboradores base del calculo. |
-| `seccion_id` | ID de seccion: `generales`, `saas`, `custom`. |
-| `seccion_titulo` | Titulo visible de la seccion. |
-| `indicador_id` | ID tecnico del indicador. |
-| `titulo` | Titulo visible de la tarjeta. |
-| `valor` | Valor numerico base. |
-| `unidad` | Unidad: `hrs`, `%`, etc. |
-| `valor_formateado` | Valor final para mostrar. |
-| `detalle` | Texto secundario opcional. |
-| `tendencia` | `up`, `down` o `neutral`. |
-| `estado` | `default`, `success`, `soft` o `danger`. |
-| `orden_seccion` | Orden de la seccion. |
-| `orden_indicador` | Orden de la tarjeta. |
-
-## Contrato esperado para `VW_INVERSION_ESTRATEGICA`
-
-Este reporte debe agrupar horas por proyecto y por epica. No incluye los campos inferiores del mockup.
+Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.
 
 Columnas esperadas:
 
 | Columna | Uso |
 | --- | --- |
-| `fecha` | Fecha base para filtrar el periodo. |
-| `project_id` | ID interno del proyecto desde `map_equipo_proyecto`. |
-| `proyecto` | Nombre visible del proyecto. |
-| `project_key_rpt` | Key Jira del proyecto. |
-| `epic_key` | Key de la epica Jira. |
-| `epica` | Nombre o resumen visible de la epica. |
-| `horas` | Total de horas destinadas a esa epica en el periodo. |
-| `estado` | Estado visible opcional de la epica. |
-| `color` | Color visual opcional: `blue`, `orange`, `red`, `green`. |
+| `fecha_desde` | Inicio del periodo. |
+| `fecha_hasta` | Fin del periodo. |
+| `orden` | Orden de visualizacion. |
+| `metric_id` | ID tecnico de la metrica. |
+| `metrica` | Nombre visible de la metrica. |
+| `valor_actual` | Valor numerico calculado. |
+| `valor_formateado` | Valor visible. Ejemplo: `0,0%`. |
+| `objetivo` | Objetivo visible. Ejemplo: `>= 90%`. |
+| `objetivo_valor` | Valor numerico del objetivo. |
+| `sentido` | `mayor_mejor` o `menor_mejor`. |
+| `estado` | `OK` o `Revisar`. |
+| `lectura` | Lectura rapida del resultado. |
+| `fuente` | Fuente conceptual del dato. |
+| `tipo` | `porcentaje`, `horas`, `dias` o `numero`. |
 
-## Contrato esperado para `VW_CALIDAD_PERFORMANCE_OPERATIVA`
+Metricas minimas contempladas:
 
-Este reporte muestra performance y calidad por proyecto. Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.
+- Bugs en produccion / Escape Rate
+- MTTR bugs criticos P0/P1
+- Cobertura de regresion
+- Smoke test por deploy
+- Criterios de aceptacion definidos
+- US con Test Cases antes del Sprint
+- Tasa de reapertura de bugs
+- Tiempo ciclo Dev a QA a Done
 
-Columnas esperadas:
+## Contratos pendientes
 
-| Columna | Uso |
-| --- | --- |
-| `fecha` | Fecha base para filtrar el periodo. |
-| `project_id` | ID interno del proyecto. |
-| `proyecto` | Nombre visible del proyecto. |
-| `project_key_rpt` | Key Jira del proyecto. |
-| `indicador` | Nombre del indicador: throughput, bugs, retrabajo, lead time, SLA, etc. |
-| `valor` | Valor numerico del indicador. |
-| `unidad` | Unidad visible: `%`, `issues`, `bugs`, `dias`, `casos`. |
-| `estado` | Estado visual: `success`, `warning`, `danger` o `default`. |
-| `tendencia` | `up`, `down` o `neutral`. |
+Tambien estan pendientes de definicion/creacion estas vistas:
+
+- `VW_INDICADORES_ENTREGA_CALIDAD`
+- `VW_INVERSION_ESTRATEGICA`
 
 ## Deploy gratis en Vercel
 
@@ -185,8 +142,6 @@ TURSO_URL
 TURSO_TOKEN
 ```
 
-Estas variables son privadas en Vercel. No se deben poner en el codigo ni en el navegador.
-
 ## ETL en GitHub Actions
 
 Workflow principal:
@@ -194,14 +149,6 @@ Workflow principal:
 ```text
 .github/workflows/etl_semanal.yml
 ```
-
-Parametros manuales:
-
-| Parametro | Valores | Uso recomendado |
-| --- | --- | --- |
-| `modo` | `incremental` o `full` | `full` para reconstruir un periodo amplio; `incremental` para corridas normales. |
-| `recrear_modelo` | `true` o `false` | Usar `true` solo una vez para borrar el modelo viejo y crear el modelo v2 limpio. |
-| `sin_jsm` | `true` o `false` | En modelo v2 se conserva por compatibilidad; JSM no crea tablas por ahora. |
 
 Primera corrida recomendada del modelo v2:
 
@@ -219,7 +166,9 @@ recrear_modelo = false
 sin_jsm = true
 ```
 
-## Desarrollo local del ETL
+## Desarrollo local
+
+ETL:
 
 ```bash
 python -m pip install --upgrade pip
@@ -229,21 +178,7 @@ python etl.py --recrear-modelo --full --sin-jsm
 python etl.py --sin-jsm
 ```
 
-Variables requeridas para el ETL:
-
-```text
-JIRA_BASE_URL
-JIRA_EMAIL
-JIRA_API_TOKEN
-JIRA_PROJECTS
-AT_BASE_URL
-AT_TOKEN
-TURSO_URL
-TURSO_TOKEN
-QMETRY_PROJECT_KEY
-```
-
-## Desarrollo local de la web
+Web:
 
 ```bash
 cd web
@@ -252,45 +187,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Luego abrir:
-
-```text
-http://localhost:3000
-```
-
-Variables requeridas para la web:
-
-```text
-TURSO_URL
-TURSO_TOKEN
-```
-
-## Tablas eliminadas del modelo
-
-Estas tablas ya no se crean en el modelo v2:
-
-- `at_capacity`
-- `at_eventos`
-- `at_equipos`
-- `at_usuarios`
-- `rpt_proyectos`
-- `rpt_comentarios`
-- `rpt_componentes`
-- `rpt_issue_links`
-- `rpt_jsm_slas`
-- `rpt_jsm_tickets`
-- `rpt_versiones`
-- `rpt_changelog`
-- `rpt_etl_log`
-- `map_at_equipo_proyecto`
-- `map_persona_fuentes`
-
 ## Proximos pasos
 
 1. Esperar que termine la corrida full del ETL.
 2. Verificar que existan las vistas `VW_REPORTE_HORAS_*` en Turso.
-3. Definir la logica de calculo para `VW_INDICADORES_ENTREGA_CALIDAD`.
-4. Definir la logica de calculo para `VW_INVERSION_ESTRATEGICA`.
-5. Definir la logica de calculo para `VW_CALIDAD_PERFORMANCE_OPERATIVA`.
-6. Crear las vistas SQL pendientes en `etl.py`.
-7. Probar todos los reportes desde Vercel.
+3. Definir y crear las vistas SQL pendientes en `etl.py`.
+4. Probar todos los reportes desde Vercel.
