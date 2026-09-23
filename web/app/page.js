@@ -16,6 +16,7 @@ export default function HomePage() {
           <Link className="navLink" href="/reportes/entrega-calidad">Entrega y calidad</Link>
           <Link className="navLink" href="/reportes/inversion-estrategica">Inversion estrategica</Link>
           <Link className="navLink" href="/reportes/calidad-performance">Calidad y performance</Link>
+          <Link className="navLink" href="/reportes/novedades-laborales">Novedades laborales</Link>
         </div>
       </nav>
 
@@ -29,7 +30,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="contentGrid reportsGridFour">
+      <section className="contentGrid reportsGridFive">
         <Link className="reportTile" href="/reportes/horas">
           <span>H</span>
           <h2>Reporte de horas</h2>
@@ -48,7 +49,12 @@ export default function HomePage() {
         <Link className="reportTile" href="/reportes/calidad-performance">
           <span>Q</span>
           <h2>Calidad y performance operativa</h2>
-          <p>Estabilidad, retrabajo, bugs, throughput y cumplimiento operativo por proyecto.</p>
+          <p>Metricas QA para priorizar mejoras y reducir riesgo en releases.</p>
+        </Link>
+        <Link className="reportTile" href="/reportes/novedades-laborales">
+          <span>N</span>
+          <h2>Novedades laborales</h2>
+          <p>Day off, feriados y horas extras por persona y por equipo.</p>
         </Link>
       </section>
     </main>
