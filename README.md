@@ -2,15 +2,19 @@
 
 Repositorio del ETL y portal de reportes operativos de Inthegra.
 
-El objetivo del proyecto es centralizar datos de Jira y ActivityTimeline en Turso, dejarlos normalizados en tablas de trabajo y exponer reportes consumibles desde una web estatica publicada con GitHub Pages.
+El objetivo del proyecto es centralizar datos de Jira y ActivityTimeline en Turso, asociarlos con identificadores internos propios y exponer reportes consumibles desde una web estatica publicada con GitHub Pages.
 
-## Que resuelve
+## Modelo vigente
 
-Este proyecto cubre tres necesidades principales:
+El modelo vigente es el modelo v2. La idea principal es no trabajar mas con tablas separadas por fuente cuando el dato necesita estar asociado.
 
-- Extraer informacion operativa desde Jira: proyectos, issues, sprints, epicas, worklogs, comentarios, cambios y datos de JSM cuando se habilite.
-- Extraer informacion de ActivityTimeline: equipos, usuarios, planificacion, capacidad, eventos y horas reales registradas.
-- Preparar una web simple para presentar reportes, empezando por el reporte de horas por persona, equipo y tipo de evento.
+A partir de ahora:
+
+- La relacion equipo/proyecto vive en `map_equipo_proyecto`.
+- La relacion persona/usuario vive en `map_personas`.
+- ActivityTimeline se consolida en una unica tabla de carga: `at_workload`.
+- Jira se mantiene en tablas `rpt_` solo cuando representa informacion propia de Jira.
+- Toda vista que use el front debe salir desde SQL y despues ser consumida por la web.
 
 ## Arquitectura general
 
@@ -24,13 +28,13 @@ Jira + ActivityTimeline
       Turso
         |
         v
-Tablas normalizadas + vistas de reporte
+Mapeos + tablas consolidadas + vistas SQL
         |
         v
 docs/ publicado con GitHub Pages
 ```
 
-El proceso principal esta concentrado en `etl.py`. Ya no se usan archivos SQL sueltos ni scripts auxiliares para crear el modelo, migrar columnas o refrescar vistas.
+El proceso principal esta concentrado en `etl.py`. No se usan SQL sueltos ni scripts auxiliares para crear el modelo, migrar columnas o refrescar vistas.
 
 ## Estructura del repositorio
 
@@ -44,267 +48,226 @@ requirements.txt                    Dependencias Python
 README.md                           Documentacion del proyecto
 ```
 
-## Fuentes de datos
-
-### Jira
-
-Jira se usa para traer informacion de proyectos, issues y actividad asociada.
-
-Tablas principales generadas desde Jira:
+## Tablas vigentes
 
 | Tabla | Uso |
 | --- | --- |
-| `rpt_proyectos` | Catalogo de proyectos Jira. |
-| `rpt_versiones` | Versiones por proyecto. |
-| `rpt_componentes` | Componentes por proyecto. |
-| `rpt_sprints` | Sprints asociados a boards Scrum. |
-| `rpt_epicas` | Epicas detectadas por board/proyecto. |
-| `rpt_issues` | Issues principales con estado, tipo, responsable, estimaciones y fechas. |
-| `rpt_worklogs` | Horas cargadas en Jira. |
-| `rpt_changelog` | Cambios relevantes de issues. |
-| `rpt_issue_links` | Relaciones entre issues. |
-| `rpt_comentarios` | Comentarios de issues, guardados como preview. |
-| `rpt_jsm_tickets` | Tickets de Jira Service Management, si se ejecuta JSM. |
-| `rpt_jsm_slas` | SLAs de JSM, si se ejecuta JSM. |
+| `map_equipo_proyecto` | Tabla central para asociar equipos de ActivityTimeline con proyectos de Jira. |
+| `map_personas` | Tabla central para asociar usuarios de ActivityTimeline con usuarios de Jira. |
+| `at_workload` | Tabla consolidada de ActivityTimeline con eventos, tareas y tiempos. |
+| `rpt_issues` | Issues de Jira con `project_id` en lugar de `project_key`. |
+| `rpt_worklogs` | Worklogs de Jira con `person_id` y `project_id`. |
+| `rpt_sprints` | Sprints de Jira asociados a `project_id`. |
+| `rpt_epicas` | Epicas de Jira asociadas a `project_id`. |
+| `etl_log` | Log general del ETL. Reemplaza a `rpt_etl_log`. |
 
-### ActivityTimeline
+## `map_equipo_proyecto`
 
-ActivityTimeline es la fuente principal para el reporte de horas de equipos.
+Esta tabla reemplaza a `at_equipos`, `rpt_proyectos` y `map_at_equipo_proyecto`.
 
-Tablas vigentes generadas desde ActivityTimeline:
+Su objetivo es tener un `project_id` interno incremental que represente la asociacion entre un equipo de ActivityTimeline y un proyecto de Jira.
 
-| Tabla | Uso |
-| --- | --- |
-| `at_equipos` | Equipos existentes en ActivityTimeline. |
-| `at_usuarios` | Usuarios de ActivityTimeline. |
-| `at_workload` | Planificacion y worklogs reales de ActivityTimeline. |
-| `at_capacity` | Capacidad diaria por usuario/equipo. |
-| `at_eventos` | Eventos del timeline: booking, Jira issue, day off y otros tipos. |
-
-La tabla `at_availability` fue eliminada del modelo porque no se va a utilizar.
-
-## Modelo de ActivityTimeline
-
-### `at_equipos`
-
-Representa los equipos configurados en ActivityTimeline.
-
-Columnas principales:
+Columnas:
 
 | Columna | Descripcion |
 | --- | --- |
-| `team_id` | Identificador del equipo en ActivityTimeline. |
-| `nombre` | Nombre del equipo. |
-| `team_type` | Tipo de equipo informado por ActivityTimeline. |
-| `fecha_carga` | Fecha/hora en que el ETL cargo el dato. |
+| `project_id` | ID interno incremental. Es el identificador que se usa en el resto del modelo. |
+| `team_id_at` | ID del equipo en ActivityTimeline. |
+| `nombre_at` | Nombre del equipo en ActivityTimeline. |
+| `team_type_at` | Tipo de equipo informado por ActivityTimeline. |
+| `fecha_carga_at` | Fecha de carga del dato de ActivityTimeline. |
+| `project_key_rpt` | Key del proyecto Jira. |
+| `board_id_rpt` | Board principal detectado para el proyecto Jira. |
+| `nombre_rpt` | Nombre del proyecto Jira. |
+| `tipo_rpt` | Tipo del proyecto Jira. |
+| `lead_rpt` | Lead del proyecto Jira. |
+| `fecha_carga_rpt` | Fecha de carga del dato de Jira. |
+| `criterio_match` | Indica si la asociacion fue automatica por nombre o queda pendiente. |
+| `activo` | Indica si la asociacion esta vigente. |
+| `fecha_carga` | Fecha de actualizacion de la fila de mapeo. |
 
-### `at_usuarios`
+### Criterio de asociacion automatica
 
-Representa usuarios/personas de ActivityTimeline.
+El ETL usa como base el nombre del proyecto Jira (`nombre_rpt`). Si alguna palabra relevante de `nombre_rpt` aparece dentro de `nombre_at`, se asocia automaticamente.
 
-Columnas principales:
+Ejemplo:
+
+```text
+nombre_rpt = Business
+nombre_at  = Equipo Business
+```
+
+Resultado: ambos quedan asociados con el mismo `project_id`.
+
+Si no hay match automatico, la fila queda con `criterio_match = pendiente` para que se complete manualmente en la base.
+
+## `map_personas`
+
+Esta tabla reemplaza a `at_usuarios` y `map_persona_fuentes`.
+
+Su objetivo es tener un `person_id` interno incremental que represente a la misma persona entre ActivityTimeline y Jira.
+
+Columnas:
 
 | Columna | Descripcion |
 | --- | --- |
-| `username` | Usuario de ActivityTimeline. Es la clave principal. |
-| `full_name` | Nombre completo. |
-| `email` | Email del usuario, si viene informado. |
-| `posicion` | Posicion/rol informado por ActivityTimeline. |
-| `involvement` | Nivel de participacion informado por ActivityTimeline. |
-| `enabled` | Indica si el usuario esta activo. |
+| `person_id` | ID interno incremental. Es el identificador que se usa en el resto del modelo. |
+| `username_at` | Usuario de ActivityTimeline. |
+| `full_name_at` | Nombre completo en ActivityTimeline. |
+| `enabled_at` | Indica si el usuario esta activo en ActivityTimeline. |
+| `fecha_carga_at` | Fecha de carga del dato de ActivityTimeline. |
+| `user_id_rpt` | ID de usuario Jira detectado en endpoints de Jira. |
+| `user_name_rpt` | Nombre de usuario Jira detectado en endpoints de Jira. |
+| `fecha_carga_rpt` | Fecha de carga del dato de Jira. |
+| `criterio_match` | Indica si la asociacion fue automatica por nombre o queda pendiente. |
+| `activo` | Indica si la persona esta vigente para reporting. |
+| `fecha_carga` | Fecha de actualizacion de la fila de mapeo. |
+
+### Criterio de asociacion automatica
+
+El ETL compara `full_name_at` contra `user_name_rpt`. Si los nombres contienen las mismas palabras relevantes, asocia ambas fuentes al mismo `person_id`.
+
+Si no hay match automatico, la fila queda pendiente para completar manualmente.
+
+## `at_workload`
+
+Es la unica tabla vigente para ActivityTimeline. Reemplaza el uso separado de `at_eventos`, `at_workload` anterior y `at_capacity`.
+
+Columnas:
+
+| Columna | Descripcion |
+| --- | --- |
+| `workload_id` | ID incremental automatico del registro. |
+| `person_id` | Persona asociada desde `map_personas`. |
+| `project_id` | Proyecto/equipo asociado desde `map_equipo_proyecto`. |
+| `issue_key` | Issue Jira asociada, si existe. |
+| `event_type` | Tipo de actividad: `WORKLOG`, `BOOKING`, `DAY_OFF`, `JIRA_ISSUE`, etc. |
+| `summary` | Resumen o descripcion del trabajo. |
+| `planned_start` | Fecha de inicio planificada o fecha del worklog. |
+| `planned_end` | Fecha de fin planificada o fecha del worklog. |
+| `orig_estimate` | Estimacion original en horas. |
+| `rem_estimate` | Estimacion restante en horas. |
+| `tiempo_empleado` | Tiempo a usar para calculos de distribucion de horas. |
 | `fecha_carga` | Fecha/hora de carga. |
 
-### `at_workload`
+Para registros reales de tipo `WORKLOG`, `tiempo_empleado` sale del tiempo registrado. Para eventos planificados o calendario, se toma la estimacion diaria/original disponible desde ActivityTimeline.
 
-Guarda informacion de carga de trabajo. Actualmente se usa para dos tipos de registros:
+## `rpt_issues`
 
-- `PLANIFICADO`: horas planificadas por usuario, equipo, dia y proyecto.
-- `WORKLOG`: horas reales registradas en ActivityTimeline.
+Se mantiene como tabla principal de issues Jira, pero el campo de proyecto ahora es `project_id`.
 
-Columnas principales:
+Puntos importantes:
 
-| Columna | Descripcion |
+- `project_key` deja de ser la relacion principal.
+- La relacion con proyecto sale de `map_equipo_proyecto.project_id`.
+- Se mantienen datos funcionales como estado, tipo, prioridad, sprint, epica, responsable, fechas y estimaciones.
+
+## `rpt_worklogs`
+
+Se mantiene como tabla de worklogs Jira, pero ahora usa IDs internos.
+
+Cambios principales:
+
+| Antes | Ahora |
 | --- | --- |
-| `team_id` | Equipo de ActivityTimeline, cuando el dato lo trae. |
-| `username` | Usuario de ActivityTimeline. |
-| `full_name` | Nombre informado por ActivityTimeline. |
-| `dia` | Fecha del registro. |
-| `dia_semana` | Dia de la semana informado por ActivityTimeline. |
-| `horas_plan` | Horas planificadas. Aplica a registros `PLANIFICADO`. |
-| `project_key` | Proyecto asociado cuando ActivityTimeline lo informa. |
-| `issue_key` | Issue asociada cuando existe. |
-| `tipo_registro` | `PLANIFICADO` o `WORKLOG`. |
-| `time_spent_seconds` | Tiempo usado en segundos para registros `WORKLOG`. |
-| `horas_usadas` | Tiempo usado convertido a horas para registros `WORKLOG`. |
-| `worklog_count` | Cantidad de worklogs representados por la fila. |
-| `fecha_carga` | Fecha/hora de carga. |
+| `user_id` | `person_id` |
+| `project_key` | `project_id` |
 
-### `at_capacity`
+La tabla conserva `worklog_id`, `issue_key`, `date_worked`, `hours_logged`, `comentario` y `fecha_carga`.
 
-Guarda la capacidad diaria de cada usuario por equipo.
+## Tablas eliminadas del modelo
 
-Columnas principales:
+Estas tablas ya no se crean en el modelo v2:
 
-| Columna | Descripcion |
-| --- | --- |
-| `team_id` | Equipo de ActivityTimeline. |
-| `username` | Usuario de ActivityTimeline. |
-| `full_name` | Nombre completo informado. |
-| `dia` | Fecha de capacidad. |
-| `dia_semana` | Dia de la semana. |
-| `horas_cap` | Horas de capacidad del usuario para ese dia. |
-| `capacidad_origen` | Origen del dato, actualmente `AT_CAPACITY`. |
-| `fecha_carga` | Fecha/hora de carga. |
+- `at_capacity`
+- `at_eventos`
+- `at_equipos`
+- `at_usuarios`
+- `rpt_proyectos`
+- `rpt_comentarios`
+- `rpt_componentes`
+- `rpt_issue_links`
+- `rpt_jsm_slas`
+- `rpt_jsm_tickets`
+- `rpt_versiones`
+- `rpt_changelog`
+- `rpt_etl_log`
+- `map_at_equipo_proyecto`
+- `map_persona_fuentes`
 
-### `at_eventos`
+## Vistas para el front
 
-Es la tabla base para el reporte de horas por tipo de evento.
+Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQL.
 
-Columnas principales:
-
-| Columna | Descripcion |
-| --- | --- |
-| `evento_id` | Identificador del evento en ActivityTimeline. |
-| `username` | Usuario asociado al evento. |
-| `team_id` | Equipo asociado al evento. |
-| `project_key` | Proyecto informado por ActivityTimeline. |
-| `issue_key` | Issue Jira asociada cuando existe. |
-| `issue_id` | Identificador interno de la issue, cuando viene informado. |
-| `issue_type` | Tipo de issue/evento informado. |
-| `event_type` | Tipo de evento usado para agrupar el reporte. |
-| `summary` | Descripcion resumida del evento. |
-| `planned_start` | Inicio planificado. |
-| `planned_end` | Fin planificado. |
-| `orig_estimate` | Estimacion original convertida a horas. |
-| `rem_estimate` | Estimacion restante convertida a horas. |
-| `daily_time_estimate` | Tiempo diario estimado convertido a horas. Es el principal campo de horas para el reporte de eventos. |
-| `estimate_per_work_day` | Estimacion por dia laboral convertida a horas. |
-| `approved_by` | Usuario aprobador si ActivityTimeline lo informa. |
-| `extra_link` | Link adicional informado por ActivityTimeline. |
-| `color` | Color del evento informado por ActivityTimeline. |
-| `fecha_carga` | Fecha/hora de carga. |
-
-## Mapeos manuales
-
-Hay datos que existen en mas de una fuente pero no siempre llegan con el mismo identificador. Por eso se crearon tablas de mapeo manual.
-
-### `map_at_equipo_proyecto`
-
-Relaciona equipos de ActivityTimeline con proyectos de Jira.
-
-| Columna | Descripcion |
-| --- | --- |
-| `at_team_id` | Equipo de ActivityTimeline. |
-| `at_equipo_nombre` | Nombre del equipo AT, usado como ayuda visual. |
-| `jira_project_key` | Key del proyecto Jira. |
-| `jira_project_name` | Nombre del proyecto Jira. |
-| `criterio_match` | Criterio usado para asociar, por defecto `manual`. |
-| `activo` | Indica si la relacion esta vigente. |
-| `notas` | Observaciones. |
-
-### `map_persona_fuentes`
-
-Relaciona usuarios/personas entre ActivityTimeline y Jira.
-
-| Columna | Descripcion |
-| --- | --- |
-| `persona_nombre` | Nombre legible de la persona. |
-| `at_username` | Usuario de ActivityTimeline. |
-| `jira_account_id` | Account ID de Jira. |
-| `email` | Email de la persona. |
-| `criterio_match` | Criterio usado para asociar, por defecto `manual`. |
-| `activo` | Indica si la relacion esta vigente. |
-| `notas` | Observaciones. |
-
-Estos mapeos se cargan directamente en la base de datos. No se cargan desde el front por ahora.
-
-## Vistas vigentes para reporte de horas
-
-El ETL elimina vistas viejas y recrea solo las vistas vigentes para ActivityTimeline.
+Vistas vigentes:
 
 | Vista | Uso |
 | --- | --- |
-| `RPT_AT_EVENTOS_DETALLE_HORAS` | Detalle de eventos con fecha, persona, equipo, proyecto, tipo de evento y horas. |
-| `RPT_AT_HORAS_PERSONA_TIPO_PERIODO` | Agrupacion por fecha, persona, equipo, proyecto y tipo de evento. |
-| `RPT_AT_HORAS_EQUIPO_TIPO_PERIODO` | Agrupacion por fecha, equipo, proyecto y tipo de evento. |
+| `VW_REPORTE_HORAS_DETALLE` | Detalle base del reporte de horas con persona, proyecto, tipo de evento y tiempo. |
+| `VW_REPORTE_HORAS_PERSONA_TIPO` | Agrupacion por fecha, persona, proyecto y tipo de actividad. |
+| `VW_REPORTE_HORAS_EQUIPO_TIPO` | Agrupacion por fecha, proyecto/equipo y tipo de actividad. |
 
-Vistas legadas que el ETL elimina si existen:
+Flujo esperado para el front:
 
-- `FACT_CAPACIDAD`
-- `RPT_CAPACIDAD_SEMANA`
-- `AT_WORKLOAD_RESUMEN_DIARIO`
-- `RPT_AT_HORAS_PERSONA_TIPO`
-- `RPT_AT_HORAS_USADAS_EVENTO`
+```text
+Tablas consolidadas
+        |
+        v
+Vistas SQL en Turso
+        |
+        v
+Export JSON desde ETL o proceso controlado
+        |
+        v
+GitHub Pages / docs/
+```
+
+No se debe exponer el token de Turso directamente en el navegador.
 
 ## Reporte de horas
 
-El primer reporte a construir sobre la web es el reporte de horas de ActivityTimeline.
+La necesidad funcional del primer reporte es:
 
-La necesidad funcional es:
+1. Ver horas por persona, agrupadas por tipo de actividad.
+2. Ver horas por equipo/proyecto, agrupadas por tipo de actividad.
+3. Filtrar por periodo de fechas.
+4. Mostrar cada persona ya asociada con su equipo/proyecto interno.
 
-1. Ver horas por persona, agrupadas por tipo de evento. Ejemplo: una persona tuvo 40 horas en booking, 40 horas en Jira issue y 10 horas en day off.
-2. Ver horas por equipo, agrupadas por tipo de evento. Ejemplo: un equipo tuvo 260 horas en booking y 45 horas en day off.
-3. Poder filtrar por periodo de fechas.
-4. Mostrar el equipo al que pertenece cada persona.
-
-La base de este reporte son los datos de `at_eventos` y las vistas `RPT_AT_*`.
-
-### Estado actual del front
-
-La web esta en `docs/` y ya tiene:
-
-- Home general del portal.
-- Navegacion superior con listado de reportes.
-- Pagina `reporte-horas.html`.
-- Filtros de fecha y equipo.
-- Vista por personas.
-- Vista por equipos.
-- Estilo basado en Bootstrap y colores de Inthegra.
-
-Importante: el front esta preparado visualmente, pero todavia falta conectar datos reales desde Turso o generar un archivo JSON real desde el ETL para que GitHub Pages lo consuma. Actualmente la web puede usar datos estaticos de ejemplo dentro de `docs/data/`.
+La base del reporte ahora es `at_workload` y las vistas `VW_REPORTE_HORAS_*`.
 
 ## Ejecucion del ETL en GitHub Actions
 
-El workflow principal es:
+Workflow principal:
 
 ```text
 .github/workflows/etl_semanal.yml
 ```
 
-Se ejecuta automaticamente todos los dias a las 03:00 UTC y tambien se puede lanzar manualmente desde GitHub.
-
-Para lanzarlo manualmente:
-
-1. Entrar al repositorio en GitHub.
-2. Ir a `Actions`.
-3. Elegir `ETL Semanal - Inthegra`.
-4. Presionar `Run workflow`.
-5. Elegir los parametros.
-
-Parametros disponibles:
+Parametros manuales:
 
 | Parametro | Valores | Uso recomendado |
 | --- | --- | --- |
-| `modo` | `incremental` o `full` | Usar `full` cuando cambia el modelo o se necesita reconstruir datos historicos. Usar `incremental` para corridas normales. |
-| `sin_jsm` | `true` o `false` | Por ahora se recomienda `true` para evitar que JSM alargue la corrida. |
+| `modo` | `incremental` o `full` | `full` para reconstruir un periodo amplio; `incremental` para corridas normales. |
+| `recrear_modelo` | `true` o `false` | Usar `true` solo una vez para borrar el modelo viejo y crear el modelo v2 limpio. |
+| `sin_jsm` | `true` o `false` | En modelo v2 se conserva por compatibilidad; JSM no crea tablas por ahora. |
 
-Despues de cambios de modelo, la recomendacion es ejecutar una vez:
+Primera corrida recomendada del modelo v2:
 
 ```text
 modo = full
+recrear_modelo = true
 sin_jsm = true
 ```
 
-Luego, para el uso normal:
+Luego, corridas normales:
 
 ```text
 modo = incremental
+recrear_modelo = false
 sin_jsm = true
 ```
 
 ## Ejecucion local
-
-Para correr localmente se necesita Python 3.11 o superior.
 
 Instalar dependencias:
 
@@ -313,7 +276,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Crear un archivo `.env` en la raiz del proyecto con las variables necesarias:
+Crear `.env` con:
 
 ```bash
 JIRA_BASE_URL=
@@ -333,33 +296,25 @@ Probar conexiones:
 python etl.py --solo-conexion
 ```
 
-Correr una carga completa sin JSM:
+Primera reconstruccion del modelo v2:
 
 ```bash
-python etl.py --full --sin-jsm
+python etl.py --recrear-modelo --full --sin-jsm
 ```
 
-Correr una carga incremental sin JSM:
+Corrida normal incremental:
 
 ```bash
 python etl.py --sin-jsm
 ```
 
-Correr desde una fecha puntual:
+Corrida desde una fecha puntual:
 
 ```bash
 python etl.py --desde 2026-09-01 --sin-jsm
 ```
 
-Omitir ActivityTimeline:
-
-```bash
-python etl.py --sin-at --sin-jsm
-```
-
 ## Variables y secrets requeridos
-
-En GitHub Actions estas variables deben estar configuradas como secrets del repositorio.
 
 | Secret | Descripcion |
 | --- | --- |
@@ -371,11 +326,11 @@ En GitHub Actions estas variables deben estar configuradas como secrets del repo
 | `AT_TOKEN` | Token de ActivityTimeline. |
 | `TURSO_URL` | URL de la base Turso. Puede venir como `libsql://`; el adaptador la convierte a `https://`. |
 | `TURSO_TOKEN` | Token de acceso a Turso. |
-| `QMETRY_PROJECT_KEY` | Reservado para integraciones futuras o datos de QMetry. |
+| `QMETRY_PROJECT_KEY` | Reservado para integraciones futuras. |
 
 ## Publicacion de la web
 
-La web se publica desde la carpeta `docs/` usando GitHub Pages.
+La web se publica desde `docs/` usando GitHub Pages.
 
 Workflow:
 
@@ -383,65 +338,40 @@ Workflow:
 .github/workflows/pages.yml
 ```
 
-Para que funcione, en GitHub debe estar habilitado:
+Configuracion requerida en GitHub:
 
 ```text
 Settings -> Pages -> Source -> GitHub Actions
 ```
 
-El workflow se ejecuta cuando cambia algo dentro de `docs/` o el archivo `.github/workflows/pages.yml`. Tambien se puede lanzar manualmente desde `Actions`.
+## Validaciones del ETL
 
-## Limpieza del modelo anterior
+Al finalizar, el ETL valida que existan las tablas y vistas del modelo v2, y que no sigan presentes tablas legadas eliminadas.
 
-Como parte de la consolidacion del ETL se dejaron fuera:
+Si todavia existen tablas viejas, correr una vez con:
 
-- `at_availability`, porque no se va a usar.
-- SQL de modelo estrella anterior.
-- SQL de fixes manuales.
-- Scripts auxiliares de migracion, validacion y refresco de vistas.
-
-La idea es que `etl.py` sea la unica fuente de verdad del modelo actual.
-
-## Validaciones que hace el ETL
-
-Al finalizar la carga de ActivityTimeline, el ETL valida que existan:
-
-- Tablas AT requeridas.
-- Columnas nuevas de `at_workload`, `at_capacity` y `at_eventos`.
-- Vistas vigentes del reporte de horas.
-
-Tambien valida que no queden elementos legados como `at_availability` o vistas anteriores que ya no se usan.
+```bash
+python etl.py --recrear-modelo --full --sin-jsm
+```
 
 ## Problemas comunes
 
-### `ModuleNotFoundError: No module named 'httpx'`
+### El pipeline falla porque siguen tablas viejas
 
-Significa que no se instalaron las dependencias de `requirements.txt`. En GitHub Actions se corrige instalando requirements antes de ejecutar `etl.py`.
-
-### Pages falla con `Get Pages site failed` o `Create Pages site failed`
-
-Revisar que GitHub Pages este habilitado en el repositorio con source `GitHub Actions`.
-
-### El pipeline no actualiza columnas o vistas nuevas
-
-Ejecutar una corrida `full` una vez despues de cambios de modelo. El ETL crea columnas faltantes, elimina `at_availability`, recrea vistas y valida el modelo.
-
-### La corrida tarda demasiado
-
-Usar `sin_jsm = true`. JSM puede alargar la ejecucion. El timeout actual del workflow es de 120 minutos.
+Ejecutar la primera corrida del modelo v2 con `recrear_modelo = true`.
 
 ### El reporte web no muestra datos reales
 
-La web estatica todavia necesita una capa de datos publicada. Las opciones naturales son:
+La web estatica todavia necesita que el ETL o un proceso controlado exporte las vistas `VW_REPORTE_HORAS_*` a JSON dentro de `docs/data/`.
 
-- Generar un JSON desde el ETL y publicarlo en `docs/data/`.
-- Crear un endpoint/API liviano que consulte Turso.
-- Generar archivos de datos versionados por periodo para que GitHub Pages los consuma.
+### La corrida tarda demasiado
 
-## Proximos pasos sugeridos
+Usar `sin_jsm = true`. En el modelo v2 JSM no crea tablas, pero se conserva el parametro por compatibilidad.
 
-1. Correr el ETL en modo `full` una vez para reconstruir el modelo actual en Turso.
-2. Cargar manualmente los mapeos en `map_at_equipo_proyecto` y `map_persona_fuentes`.
-3. Verificar las vistas `RPT_AT_*` en Turso.
-4. Definir como se va a alimentar la web con datos reales.
-5. Conectar `reporte-horas.html` al dataset real del reporte.
+## Proximos pasos
+
+1. Ejecutar una unica corrida con `modo=full`, `recrear_modelo=true`, `sin_jsm=true`.
+2. Revisar `map_equipo_proyecto` y completar asociaciones pendientes.
+3. Revisar `map_personas` y completar asociaciones pendientes.
+4. Validar datos en `at_workload`, `rpt_issues` y `rpt_worklogs`.
+5. Exportar las vistas `VW_REPORTE_HORAS_*` para conectar el front real.
