@@ -57,6 +57,12 @@ Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQ
 | `VW_INVERSION_ESTRATEGICA` | Horas destinadas agrupadas por proyecto y epica. |
 | `VW_QA_METRICAS_MINIMAS` | Tablero minimo de metricas QA. |
 
+Definiciones SQL versionadas:
+
+| Archivo | Uso |
+| --- | --- |
+| `sql/vw_novedades_laborales.sql` | Definicion ejecutable de `VW_NOVEDADES_LABORALES` hasta integrarla dentro de `etl.py`. |
+
 ## Web dinamica
 
 La app esta en `web/`.
@@ -147,7 +153,7 @@ Tambien estan pendientes de definicion/creacion estas vistas:
 
 - `VW_INDICADORES_ENTREGA_CALIDAD`
 - `VW_INVERSION_ESTRATEGICA`
-- `VW_NOVEDADES_LABORALES`
+- Integrar `VW_NOVEDADES_LABORALES` dentro de `etl.py` usando `sql/vw_novedades_laborales.sql`.
 
 ## Deploy gratis en Vercel
 
@@ -217,5 +223,5 @@ npm run dev
 
 1. Esperar que termine la corrida full del ETL.
 2. Verificar que existan las vistas `VW_REPORTE_HORAS_*` en Turso.
-3. Definir y crear las vistas SQL pendientes en `etl.py`.
+3. Integrar las vistas SQL pendientes en `etl.py`.
 4. Probar todos los reportes desde Vercel.
