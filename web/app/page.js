@@ -14,6 +14,7 @@ export default function HomePage() {
         <div className="navActions">
           <Link className="navLink" href="/reportes/horas">Reporte de horas</Link>
           <Link className="navLink" href="/reportes/entrega-calidad">Entrega y calidad</Link>
+          <Link className="navLink" href="/reportes/inversion-estrategica">Inversion estrategica</Link>
         </div>
       </nav>
 
@@ -28,7 +29,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="contentGrid">
+      <section className="contentGrid reportsGridThree">
         <Link className="reportTile" href="/reportes/horas">
           <span>H</span>
           <h2>Reporte de horas</h2>
@@ -38,6 +39,11 @@ export default function HomePage() {
           <span>I</span>
           <h2>Entrega y calidad de servicio</h2>
           <p>Indicadores generales, SaaS y desarrollo a medida para seguimiento ejecutivo.</p>
+        </Link>
+        <Link className="reportTile" href="/reportes/inversion-estrategica">
+          <span>E</span>
+          <h2>Inversion estrategica</h2>
+          <p>Horas destinadas agrupadas por proyecto y por epica.</p>
         </Link>
       </section>
     </main>
