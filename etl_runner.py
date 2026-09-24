@@ -7,6 +7,8 @@ antes de ejecutar main():
 - reduce el tamano de pagina de Jira para evitar respuestas demasiado pesadas;
 - corta la paginacion de usuarios de ActivityTimeline si el endpoint repite pagina;
 - corta la paginacion de workload de ActivityTimeline si crece sin control;
+- guarda claves fuente de ActivityTimeline para rematchear at_workload;
+- recalcula person_id y project_id de at_workload usando map_personas y map_equipo_proyecto;
 - baja el ruido de logs HTTP;
 - crea vistas SQL complementarias versionadas cuando corresponde.
 """
@@ -22,7 +24,34 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
+_original_crear_tablas = etl.crear_tablas
 _original_jira_get = etl.JiraClient.get
+
+
+def _norm(value):
+    return str(value or "").strip().lower()
+
+
+def _has_column(conn, table, column):
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(str(row[1]).lower() == column.lower() for row in rows)
+
+
+def ensure_at_workload_source_columns(conn):
+    extra_columns = {
+        "username_at": "TEXT",
+        "team_id_at": "TEXT",
+        "project_key_at": "TEXT",
+    }
+    for column, column_type in extra_columns.items():
+        if not _has_column(conn, "at_workload", column):
+            conn.execute(f"ALTER TABLE at_workload ADD COLUMN {column} {column_type}")
+    conn.commit()
+
+
+def crear_tablas_seguro(conn):
+    _original_crear_tablas(conn)
+    ensure_at_workload_source_columns(conn)
 
 
 def jira_get_seguro(self, path, params=None, api="platform"):
@@ -137,18 +166,19 @@ def cargar_at_usuarios_en_map_seguro(at, conn, modo):
     rows = list(dedup.values())
 
     existentes = conn.execute("SELECT person_id, username_at FROM map_personas WHERE username_at IS NOT NULL").fetchall()
-    por_username = {r[1]: r[0] for r in existentes}
+    por_username = {_norm(r[1]): r[0] for r in existentes if _norm(r[1])}
     altas = 0
 
     for r in rows:
-        if r["username_at"] in por_username:
+        key = _norm(r["username_at"])
+        if key in por_username:
             conn.execute(
                 """
                 UPDATE map_personas
                 SET full_name_at=?, enabled_at=?, fecha_carga_at=?, fecha_carga=?
-                WHERE username_at=?
+                WHERE person_id=?
                 """,
-                (r["full_name_at"], r["enabled_at"], r["fecha_carga_at"], now, r["username_at"]),
+                (r["full_name_at"], r["enabled_at"], r["fecha_carga_at"], now, por_username[key]),
             )
         else:
             conn.execute(
@@ -160,11 +190,70 @@ def cargar_at_usuarios_en_map_seguro(at, conn, modo):
                 (r["username_at"], r["full_name_at"], r["enabled_at"], r["fecha_carga_at"], "pendiente", 1, now),
             )
             altas += 1
-
     conn.commit()
     etl.log.info("Map personas AT: %s usuarios procesados", len(rows))
     etl.log_etl(conn, modo, "map_personas_at", altas, detalle="usuarios AT nuevos; existentes actualizados")
     return rows
+
+
+def mapa_person_por_at_seguro(conn):
+    rows = conn.execute("""
+        SELECT person_id, username_at
+        FROM map_personas
+        WHERE username_at IS NOT NULL AND TRIM(username_at) <> '' AND COALESCE(activo, 1) = 1
+        ORDER BY person_id
+    """).fetchall()
+    mapping = {}
+    duplicates = set()
+    for person_id, username in rows:
+        key = _norm(username)
+        if key in mapping:
+            duplicates.add(key)
+            continue
+        mapping[key] = person_id
+    if duplicates:
+        etl.log.warning("map_personas tiene usernames AT duplicados: %s", ", ".join(sorted(duplicates)[:10]))
+    return mapping
+
+
+def mapa_project_por_team_seguro(conn):
+    rows = conn.execute("""
+        SELECT project_id, team_id_at
+        FROM map_equipo_proyecto
+        WHERE team_id_at IS NOT NULL AND TRIM(team_id_at) <> '' AND COALESCE(activo, 1) = 1
+        ORDER BY project_id
+    """).fetchall()
+    mapping = {}
+    duplicates = set()
+    for project_id, team_id in rows:
+        key = str(team_id).strip()
+        if key in mapping:
+            duplicates.add(key)
+            continue
+        mapping[key] = project_id
+    if duplicates:
+        etl.log.warning("map_equipo_proyecto tiene team_id_at duplicados: %s", ", ".join(sorted(duplicates)[:10]))
+    return mapping
+
+
+def mapa_project_por_key_seguro(conn):
+    rows = conn.execute("""
+        SELECT project_id, project_key_rpt
+        FROM map_equipo_proyecto
+        WHERE project_key_rpt IS NOT NULL AND TRIM(project_key_rpt) <> '' AND COALESCE(activo, 1) = 1
+        ORDER BY project_id
+    """).fetchall()
+    mapping = {}
+    duplicates = set()
+    for project_id, project_key in rows:
+        key = str(project_key).strip().upper()
+        if key in mapping:
+            duplicates.add(key)
+            continue
+        mapping[key] = project_id
+    if duplicates:
+        etl.log.warning("map_equipo_proyecto tiene project_key_rpt duplicados: %s", ", ".join(sorted(duplicates)[:10]))
+    return mapping
 
 
 def _firma_worklog_item(item):
@@ -177,39 +266,53 @@ def _firma_worklog_item(item):
     ])
 
 
+def _project_key_from_item(item):
+    issue_key = item.get("issueKey", "") or ""
+    return (item.get("projectKey", "") or (issue_key.split("-")[0] if "-" in issue_key else "")).strip().upper()
+
+
+def _project_id_for(project_by_key, project_by_team, project_key, team_id):
+    return project_by_key.get(str(project_key or "").strip().upper()) or project_by_team.get(str(team_id or "").strip())
+
+
 def extraer_at_workload_seguro(at, conn, equipos, modo, full=False):
     if not at:
         return
 
+    ensure_at_workload_source_columns(conn)
     etl.log.info("ActivityTimeline workload consolidado...")
     now = etl.now_iso()
     start, end = etl.rango_at(full)
-    person_map = etl.mapa_person_por_at(conn)
-    project_by_team = etl.mapa_project_por_team(conn)
-    project_by_key = etl.mapa_project_por_key(conn)
+    person_map = mapa_person_por_at_seguro(conn)
+    project_by_team = mapa_project_por_team_seguro(conn)
+    project_by_key = mapa_project_por_key_seguro(conn)
     rows = []
 
     max_pages_per_team = int(os.getenv("AT_WORKLOG_MAX_PAGES_PER_TEAM", "25"))
     max_rows_per_team = int(os.getenv("AT_WORKLOG_MAX_ROWS_PER_TEAM", "10000"))
 
     for equipo in equipos:
-        team_id = str(equipo.get("id"))
+        team_id = str(equipo.get("id") or "").strip()
         team_name = equipo.get("name")
-        project_id = project_by_team.get(team_id)
         team_rows_before = len(rows)
 
         try:
             data = at.get("timeline", params={"teamId": team_id, "start": start, "end": end})
             for member in data.get("members", []) if isinstance(data, dict) else []:
-                person_id = person_map.get(member.get("username"))
+                username = member.get("username")
+                person_id = person_map.get(_norm(username))
                 for item in member.get("issues", []) or []:
                     event_type = item.get("issueType", "") or "SIN_TIPO"
                     tiempo = item.get("dailyTimeEstimate")
                     if tiempo is None:
                         tiempo = item.get("originalTimeEstimate")
+                    project_key = _project_key_from_item(item)
                     rows.append({
                         "person_id": person_id,
-                        "project_id": project_id,
+                        "project_id": _project_id_for(project_by_key, project_by_team, project_key, team_id),
+                        "username_at": username,
+                        "team_id_at": team_id,
+                        "project_key_at": project_key,
                         "issue_key": item.get("issueKey", ""),
                         "event_type": event_type,
                         "summary": (item.get("summary") or "")[:500],
@@ -261,15 +364,17 @@ def extraer_at_workload_seguro(at, conn, equipos, modo, full=False):
                     nuevos_en_pagina += 1
 
                     username = item.get("username")
-                    person_id = person_map.get(username)
+                    person_id = person_map.get(_norm(username))
                     issue_key = item.get("issueKey", "")
-                    project_key = item.get("projectKey", "") or (issue_key.split("-")[0] if "-" in issue_key else "")
-                    project_id_row = project_id or project_by_key.get(project_key)
+                    project_key = _project_key_from_item(item)
                     is_worklog = bool(item.get("worklogId"))
                     event_type = "WORKLOG" if is_worklog else item.get("issueType", "CALENDAR_EVENT")
                     rows.append({
                         "person_id": person_id,
-                        "project_id": project_id_row,
+                        "project_id": _project_id_for(project_by_key, project_by_team, project_key, team_id),
+                        "username_at": username,
+                        "team_id_at": team_id,
+                        "project_key_at": project_key,
                         "issue_key": issue_key,
                         "event_type": event_type,
                         "summary": (item.get("comment") or item.get("summary") or "")[:500],
@@ -302,6 +407,48 @@ def extraer_at_workload_seguro(at, conn, equipos, modo, full=False):
     conn.execute("DELETE FROM at_workload WHERE planned_start >= ? AND planned_start <= ?", (start, end))
     conn.commit()
     etl.log_etl(conn, modo, "at_workload", etl.upsert(conn, "at_workload", rows), detalle=f"{start} a {end}")
+    rematchear_at_workload_ids(conn)
+
+
+def rematchear_at_workload_ids(conn):
+    ensure_at_workload_source_columns(conn)
+    etl.log.info("Rematcheando at_workload contra map_personas y map_equipo_proyecto...")
+    conn.execute("""
+        UPDATE at_workload
+        SET person_id = (
+            SELECT mp.person_id
+            FROM map_personas mp
+            WHERE lower(trim(mp.username_at)) = lower(trim(at_workload.username_at))
+              AND COALESCE(mp.activo, 1) = 1
+            ORDER BY mp.person_id
+            LIMIT 1
+        )
+        WHERE username_at IS NOT NULL AND trim(username_at) <> ''
+    """)
+    conn.execute("""
+        UPDATE at_workload
+        SET project_id = COALESCE(
+            (
+                SELECT me.project_id
+                FROM map_equipo_proyecto me
+                WHERE upper(trim(me.project_key_rpt)) = upper(trim(at_workload.project_key_at))
+                  AND COALESCE(me.activo, 1) = 1
+                ORDER BY me.project_id
+                LIMIT 1
+            ),
+            (
+                SELECT me.project_id
+                FROM map_equipo_proyecto me
+                WHERE trim(me.team_id_at) = trim(at_workload.team_id_at)
+                  AND COALESCE(me.activo, 1) = 1
+                ORDER BY me.project_id
+                LIMIT 1
+            )
+        )
+        WHERE (project_key_at IS NOT NULL AND trim(project_key_at) <> '')
+           OR (team_id_at IS NOT NULL AND trim(team_id_at) <> '')
+    """)
+    conn.commit()
 
 
 def aplicar_vistas_complementarias(conn):
@@ -317,10 +464,12 @@ _original_refrescar_vistas = etl.refrescar_vistas
 
 
 def refrescar_vistas_seguro(conn):
+    rematchear_at_workload_ids(conn)
     _original_refrescar_vistas(conn)
     aplicar_vistas_complementarias(conn)
 
 
+etl.crear_tablas = crear_tablas_seguro
 etl.JiraClient.get = jira_get_seguro
 etl.JiraClient.paginar = jira_paginar_seguro
 etl.cargar_at_usuarios_en_map = cargar_at_usuarios_en_map_seguro
