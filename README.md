@@ -24,7 +24,7 @@ Vercel / Next.js / web/
 
 - GitHub Actions corre el ETL usando `etl_runner.py`.
 - `etl.py` sigue siendo el proceso principal del ETL.
-- `etl_runner.py` aplica protecciones operativas antes de ejecutar `etl.py`: corta paginas repetidas de ActivityTimeline, reduce ruido de logs HTTP y aplica vistas complementarias versionadas.
+- `etl_runner.py` aplica protecciones operativas antes de ejecutar `etl.py`: reintenta cortes transitorios de Jira, reduce paginas de Jira, corta paginas repetidas de ActivityTimeline, reduce ruido de logs HTTP y aplica vistas complementarias versionadas.
 - Turso guarda la base de datos.
 - Next.js en Vercel muestra la web dinamica.
 - La web consulta Turso desde API routes del lado servidor, sin exponer `TURSO_TOKEN` en el navegador.
@@ -234,7 +234,18 @@ recrear_modelo = false
 sin_jsm = true
 ```
 
-Si ActivityTimeline repite la misma pagina de usuarios, `etl_runner.py` corta la paginacion para evitar timeouts como `The action 'Ejecutar ETL principal' has timed out after 110 minutes`.
+Variables operativas del workflow:
+
+| Variable | Uso |
+| --- | --- |
+| `JIRA_MAX_RETRIES` | Reintentos ante cortes transitorios de Jira. |
+| `JIRA_RETRY_BASE_SECONDS` | Espera base entre reintentos de Jira. |
+| `JIRA_PAGE_SIZE` | Cantidad de issues por pagina en Jira. |
+| `JIRA_PAGE_SLEEP_SECONDS` | Pausa entre paginas de Jira. |
+| `AT_WORKLOG_MAX_PAGES_PER_TEAM` | Limite de paginas por equipo en ActivityTimeline. |
+| `AT_WORKLOG_MAX_ROWS_PER_TEAM` | Limite de filas por equipo en ActivityTimeline. |
+
+Si Jira corta la conexion durante `search/jql`, `etl_runner.py` reintenta la pagina. Si ActivityTimeline repite paginas o devuelve demasiadas filas, `etl_runner.py` corta la paginacion para evitar timeouts como `The action 'Ejecutar ETL principal' has timed out after 110 minutes`.
 
 ## Desarrollo local
 
