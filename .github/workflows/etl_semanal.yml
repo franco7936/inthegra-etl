@@ -88,6 +88,10 @@ jobs:
       - name: Ejecutar ETL principal
         timeout-minutes: 110
         env:
+          JIRA_MAX_RETRIES: '5'
+          JIRA_RETRY_BASE_SECONDS: '5'
+          JIRA_PAGE_SIZE: '50'
+          JIRA_PAGE_SLEEP_SECONDS: '0.25'
           AT_WORKLOG_MAX_PAGES_PER_TEAM: '25'
           AT_WORKLOG_MAX_ROWS_PER_TEAM: '10000'
         run: |
