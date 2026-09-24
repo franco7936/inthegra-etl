@@ -3,6 +3,8 @@ Runner seguro para etl.py.
 
 Mantiene el ETL principal como fuente de verdad, pero aplica correcciones defensivas
 antes de ejecutar main():
+- reintenta llamadas transitorias de Jira si la conexion se corta;
+- reduce el tamano de pagina de Jira para evitar respuestas demasiado pesadas;
 - corta la paginacion de usuarios de ActivityTimeline si el endpoint repite pagina;
 - corta la paginacion de workload de ActivityTimeline si crece sin control;
 - baja el ruido de logs HTTP;
@@ -18,6 +20,74 @@ import etl
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+_original_jira_get = etl.JiraClient.get
+
+
+def jira_get_seguro(self, path, params=None, api="platform"):
+    max_retries = int(os.getenv("JIRA_MAX_RETRIES", "5"))
+    base_sleep = float(os.getenv("JIRA_RETRY_BASE_SECONDS", "5"))
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            return _original_jira_get(self, path, params=params, api=api)
+        except etl.requests.exceptions.HTTPError as exc:
+            status_code = getattr(exc.response, "status_code", None)
+            if status_code not in {429, 500, 502, 503, 504} or attempt == max_retries:
+                raise
+            retry_after = getattr(exc.response, "headers", {}).get("Retry-After") if exc.response is not None else None
+            wait = float(retry_after) if retry_after and str(retry_after).isdigit() else min(90, base_sleep * attempt)
+            etl.log.warning("Jira HTTP %s en %s; reintento %s/%s en %ss", status_code, path, attempt, max_retries, wait)
+            time.sleep(wait)
+        except etl.requests.exceptions.RequestException as exc:
+            if attempt == max_retries:
+                raise
+            wait = min(90, base_sleep * attempt)
+            etl.log.warning("Jira conexion interrumpida en %s: %s; reintento %s/%s en %ss", path, exc, attempt, max_retries, wait)
+            time.sleep(wait)
+
+
+def jira_paginar_seguro(self, path, params=None, api="platform", key_valores="values", max_items=50000):
+    params = dict(params or {})
+    start_key = "start" if api == "jsm" else "startAt"
+    limit_key = "limit" if api == "jsm" else "maxResults"
+    page_size = int(os.getenv("JIRA_PAGE_SIZE", "50"))
+    page_sleep = float(os.getenv("JIRA_PAGE_SLEEP_SECONDS", "0.25"))
+
+    params[start_key] = int(params.get(start_key, 0) or 0)
+    params[limit_key] = min(page_size, int(params.get(limit_key, page_size) or page_size))
+    rows = []
+    previous_start = None
+
+    while True:
+        if previous_start == params[start_key]:
+            etl.log.warning("Jira paginacion detenida en %s por start repetido=%s", path, params[start_key])
+            break
+        previous_start = params[start_key]
+
+        data = self.get(path, params=params, api=api)
+        items = data.get(key_valores, data.get("values", []))
+        if not items:
+            break
+
+        rows.extend(items)
+        total = data.get("total")
+        is_last = data.get("isLast", data.get("isLastPage", False))
+
+        etl.log.info("Jira %s: pagina start=%s items=%s acumulado=%s", path, params[start_key], len(items), len(rows))
+
+        if is_last or len(rows) >= max_items:
+            break
+        if total is not None and len(rows) >= total:
+            break
+
+        params[start_key] += len(items)
+        time.sleep(page_sleep)
+
+    if len(rows) >= max_items:
+        etl.log.warning("Jira %s alcanzo limite max_items=%s", path, max_items)
+    return rows
 
 
 def cargar_at_usuarios_en_map_seguro(at, conn, modo):
@@ -251,6 +321,8 @@ def refrescar_vistas_seguro(conn):
     aplicar_vistas_complementarias(conn)
 
 
+etl.JiraClient.get = jira_get_seguro
+etl.JiraClient.paginar = jira_paginar_seguro
 etl.cargar_at_usuarios_en_map = cargar_at_usuarios_en_map_seguro
 etl.extraer_at_workload = extraer_at_workload_seguro
 etl.refrescar_vistas = refrescar_vistas_seguro
