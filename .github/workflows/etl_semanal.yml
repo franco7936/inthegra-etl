@@ -22,6 +22,11 @@ on:
         options:
           - 'false'
           - 'true'
+      limpiar_antes_de:
+        description: 'Opcional: borrar horas anteriores a esta fecha, ej 2026-08-01'
+        required: false
+        default: ''
+        type: string
       sin_jsm:
         description: 'Omitir JSM (soporte)'
         required: false
@@ -120,6 +125,12 @@ jobs:
 
           echo "Corriendo: python etl_runner.py $ARGS"
           python etl_runner.py $ARGS
+
+      - name: Limpiar datos anteriores a fecha solicitada
+        if: ${{ success() && github.event.inputs.limpiar_antes_de != '' }}
+        run: |
+          echo "Limpiando datos transaccionales anteriores a ${{ github.event.inputs.limpiar_antes_de }}"
+          python limpiar_turso_desde.py --desde "${{ github.event.inputs.limpiar_antes_de }}" --confirmar
 
       - name: Resultado correcto
         if: success()
