@@ -9,17 +9,45 @@ WITH esperado AS (
         w.event_type,
         w.tiempo_empleado,
         w.username_at,
+        w.user_real_name_at,
+        w.user_email_at,
         w.team_id_at,
         w.project_key_at,
         w.person_id AS person_id_actual,
         w.project_id AS project_id_actual,
-        (
-            SELECT mp.person_id
-            FROM map_personas mp
-            WHERE lower(trim(mp.username_at)) = lower(trim(w.username_at))
-              AND COALESCE(mp.activo, 1) = 1
-            ORDER BY mp.person_id
-            LIMIT 1
+        COALESCE(
+            (
+                SELECT mp.person_id
+                FROM map_personas mp
+                WHERE lower(trim(mp.username_at)) = lower(trim(w.username_at))
+                  AND COALESCE(mp.activo, 1) = 1
+                ORDER BY mp.person_id
+                LIMIT 1
+            ),
+            (
+                SELECT mp.person_id
+                FROM map_personas mp
+                WHERE lower(trim(mp.email_at)) = lower(trim(w.user_email_at))
+                  AND COALESCE(mp.activo, 1) = 1
+                ORDER BY mp.person_id
+                LIMIT 1
+            ),
+            (
+                SELECT mp.person_id
+                FROM map_personas mp
+                WHERE lower(trim(mp.full_name_at)) = lower(trim(w.user_real_name_at))
+                  AND COALESCE(mp.activo, 1) = 1
+                ORDER BY mp.person_id
+                LIMIT 1
+            ),
+            (
+                SELECT mp.person_id
+                FROM map_personas mp
+                WHERE lower(trim(mp.user_name_rpt)) = lower(trim(w.user_real_name_at))
+                  AND COALESCE(mp.activo, 1) = 1
+                ORDER BY mp.person_id
+                LIMIT 1
+            )
         ) AS person_id_esperado,
         COALESCE(
             (
@@ -48,6 +76,8 @@ SELECT
     e.event_type,
     e.tiempo_empleado,
     e.username_at,
+    e.user_real_name_at,
+    e.user_email_at,
     e.team_id_at,
     e.project_key_at,
     e.person_id_actual,
@@ -55,7 +85,9 @@ SELECT
     COALESCE(mp_actual.full_name_at, mp_actual.user_name_rpt) AS persona_actual,
     COALESCE(mp_esperado.full_name_at, mp_esperado.user_name_rpt) AS persona_esperada,
     CASE
-        WHEN e.username_at IS NULL OR trim(e.username_at) = '' THEN 'SIN_FUENTE'
+        WHEN (e.username_at IS NULL OR trim(e.username_at) = '')
+         AND (e.user_email_at IS NULL OR trim(e.user_email_at) = '')
+         AND (e.user_real_name_at IS NULL OR trim(e.user_real_name_at) = '') THEN 'SIN_FUENTE'
         WHEN e.person_id_esperado IS NULL THEN 'SIN_MATCH'
         WHEN e.person_id_actual = e.person_id_esperado THEN 'OK'
         ELSE 'DISTINTO'
@@ -88,6 +120,16 @@ SELECT
 FROM map_personas
 WHERE username_at IS NOT NULL AND trim(username_at) <> '' AND COALESCE(activo, 1) = 1
 GROUP BY lower(trim(username_at))
+HAVING COUNT(*) > 1
+UNION ALL
+SELECT
+    'map_personas.email_at' AS origen,
+    lower(trim(email_at)) AS clave,
+    COUNT(*) AS cantidad,
+    GROUP_CONCAT(person_id) AS ids
+FROM map_personas
+WHERE email_at IS NOT NULL AND trim(email_at) <> '' AND COALESCE(activo, 1) = 1
+GROUP BY lower(trim(email_at))
 HAVING COUNT(*) > 1
 UNION ALL
 SELECT
