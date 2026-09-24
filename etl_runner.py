@@ -9,6 +9,7 @@ antes de ejecutar main():
 - corta la paginacion de workload de ActivityTimeline si crece sin control;
 - guarda claves fuente de ActivityTimeline para rematchear at_workload;
 - recalcula person_id y project_id de at_workload usando map_personas y map_equipo_proyecto;
+- evita reutilizar la misma persona AT al matchear usuarios Jira por nombre;
 - baja el ruido de logs HTTP;
 - crea vistas SQL complementarias versionadas cuando corresponde.
 """
@@ -194,6 +195,63 @@ def cargar_at_usuarios_en_map_seguro(at, conn, modo):
     etl.log.info("Map personas AT: %s usuarios procesados", len(rows))
     etl.log_etl(conn, modo, "map_personas_at", altas, detalle="usuarios AT nuevos; existentes actualizados")
     return rows
+
+
+def cargar_jira_personas_en_map_seguro(conn, personas_jira, modo):
+    etl.log.info("Map personas desde Jira...")
+    now = etl.now_iso()
+    at_rows = conn.execute("""
+        SELECT person_id, full_name_at, user_id_rpt, user_name_rpt
+        FROM map_personas
+        WHERE COALESCE(activo, 1) = 1
+        ORDER BY person_id
+    """).fetchall()
+    por_user_id = {str(r[2]).strip(): r[0] for r in at_rows if str(r[2] or "").strip()}
+    usados = set(por_user_id.values())
+    altas = 0
+
+    for user_id, user_name in sorted(personas_jira, key=lambda row: (_norm(row[1]), str(row[0] or ""))):
+        user_id = str(user_id or "").strip()
+        user_name = str(user_name or "").strip()
+        if not user_id and not user_name:
+            continue
+
+        if user_id and user_id in por_user_id:
+            conn.execute(
+                "UPDATE map_personas SET user_name_rpt=?, fecha_carga_rpt=?, fecha_carga=? WHERE person_id=?",
+                (user_name, now, now, por_user_id[user_id]),
+            )
+            continue
+
+        candidatos = [r for r in at_rows if not r[2] and r[0] not in usados]
+        match = next((r for r in candidatos if _norm(r[1]) and _norm(r[1]) == _norm(user_name)), None)
+        if not match:
+            match = next((r for r in candidatos if etl.personas_compatibles(user_name, r[1])), None)
+
+        if match:
+            usados.add(match[0])
+            conn.execute(
+                """
+                UPDATE map_personas
+                SET user_id_rpt=?, user_name_rpt=?, fecha_carga_rpt=?,
+                    criterio_match=CASE WHEN criterio_match='pendiente' THEN 'nombre_auto' ELSE criterio_match END,
+                    fecha_carga=?
+                WHERE person_id=?
+                """,
+                (user_id or None, user_name, now, now, match[0]),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO map_personas
+                (user_id_rpt,user_name_rpt,fecha_carga_rpt,criterio_match,activo,fecha_carga)
+                VALUES (?,?,?,?,?,?)
+                """,
+                (user_id or None, user_name, now, "pendiente", 1, now),
+            )
+            altas += 1
+    conn.commit()
+    etl.log_etl(conn, modo, "map_personas_jira", altas, detalle="usuarios Jira nuevos; matching automatico por nombre")
 
 
 def mapa_person_por_at_seguro(conn):
@@ -452,12 +510,13 @@ def rematchear_at_workload_ids(conn):
 
 
 def aplicar_vistas_complementarias(conn):
-    sql_path = os.path.join(os.path.dirname(__file__), "sql", "vw_novedades_laborales.sql")
-    if os.path.exists(sql_path):
-        with open(sql_path, "r", encoding="utf-8") as file:
-            conn.executescript(file.read())
-        conn.commit()
-        etl.log.info("Vista complementaria aplicada: VW_NOVEDADES_LABORALES")
+    for filename in ["vw_novedades_laborales.sql", "vw_auditoria_at_workload_match.sql"]:
+        sql_path = os.path.join(os.path.dirname(__file__), "sql", filename)
+        if os.path.exists(sql_path):
+            with open(sql_path, "r", encoding="utf-8") as file:
+                conn.executescript(file.read())
+            conn.commit()
+            etl.log.info("Vista complementaria aplicada desde %s", filename)
 
 
 _original_refrescar_vistas = etl.refrescar_vistas
@@ -473,6 +532,7 @@ etl.crear_tablas = crear_tablas_seguro
 etl.JiraClient.get = jira_get_seguro
 etl.JiraClient.paginar = jira_paginar_seguro
 etl.cargar_at_usuarios_en_map = cargar_at_usuarios_en_map_seguro
+etl.cargar_jira_personas_en_map = cargar_jira_personas_en_map_seguro
 etl.extraer_at_workload = extraer_at_workload_seguro
 etl.refrescar_vistas = refrescar_vistas_seguro
 
