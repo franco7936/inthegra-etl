@@ -11,7 +11,9 @@ Ademas de los IDs normalizados, el ETL guarda estas claves originales de Activit
 
 | Columna | Uso |
 | --- | --- |
-| `username_at` | Usuario original de ActivityTimeline. Es la clave principal para rematchear `person_id`. |
+| `username_at` | Usuario original de ActivityTimeline. Es la primera clave para rematchear `person_id`. |
+| `user_real_name_at` | Nombre real informado por ActivityTimeline en el `member` o en el item. Se usa como fallback de persona. |
+| `user_email_at` | Email informado por ActivityTimeline. Se usa como fallback de persona. |
 | `team_id_at` | Equipo original de ActivityTimeline. Se usa como fallback para rematchear `project_id`. |
 | `project_key_at` | Project key detectado desde ActivityTimeline o desde `issue_key`. Es la primera opcion para rematchear `project_id`. |
 
@@ -19,11 +21,12 @@ Estas columnas son importantes porque permiten corregir `map_personas` o `map_eq
 
 ## Regla de personas
 
-Para `at_workload.person_id` se usa:
+Para `at_workload.person_id` se usa este orden:
 
-```sql
-lower(trim(at_workload.username_at)) = lower(trim(map_personas.username_at))
-```
+1. `username_at` contra `map_personas.username_at`.
+2. `user_email_at` contra `map_personas.email_at`.
+3. `user_real_name_at` contra `map_personas.full_name_at`.
+4. `user_real_name_at` contra `map_personas.user_name_rpt`.
 
 Solo se consideran filas activas:
 
@@ -31,7 +34,9 @@ Solo se consideran filas activas:
 COALESCE(map_personas.activo, 1) = 1
 ```
 
-Si hay mas de una fila activa con el mismo `username_at`, el ETL toma el menor `person_id` y deja un warning en logs. La correccion correcta es dejar una sola fila activa por `username_at`.
+Esto es necesario porque en ActivityTimeline los `BOOKING`, `DAY_OFF`, `HOLIDAY` y otros eventos no Jira vienen dentro de cada `member` del endpoint `timeline`. La persona esta en el `member`, no siempre dentro del item individual. Por eso el ETL debe arrastrar las claves del `member` hacia cada fila de `at_workload`.
+
+Si hay mas de una fila activa con el mismo `username_at` o `email_at`, el ETL toma el menor `person_id` y deja un warning en logs. La correccion correcta es dejar una sola fila activa por clave.
 
 ## Regla de proyectos
 
@@ -71,6 +76,7 @@ En `map_personas`:
 
 - Completar `username_at` con el usuario de ActivityTimeline.
 - Completar `full_name_at` con el nombre de ActivityTimeline.
+- Completar `email_at` cuando ActivityTimeline informe email.
 - Completar `user_id_rpt` y `user_name_rpt` con el usuario de Jira.
 - Dejar `activo = 1` solo para la fila valida.
 
