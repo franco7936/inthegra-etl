@@ -11,8 +11,46 @@ function todayRange() {
   return { from, to };
 }
 
+function parseDate(value) {
+  if (!value) return null;
+  const [year, month, day] = String(value).split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function businessDaysBetween(from, to) {
+  const start = parseDate(from);
+  const end = parseDate(to);
+  if (!start || !end || start > end) return 0;
+
+  let count = 0;
+  const current = new Date(start);
+  while (current <= end) {
+    const day = current.getUTCDay();
+    if (day >= 1 && day <= 5) count += 1;
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return count;
+}
+
+function periodLabel(from, to) {
+  const start = parseDate(from);
+  const end = parseDate(to);
+  if (!start || !end) return 'periodo';
+
+  const formatter = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const startLabel = formatter.format(start);
+  const endLabel = formatter.format(end);
+  return startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
+}
+
 function formatHours(value) {
   return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(Number(value || 0));
+}
+
+function formatPercent(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
+  return `${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(value))}%`;
 }
 
 function labelType(value) {
@@ -48,6 +86,36 @@ function getMatrixData(rows, mode) {
   return { eventTypes, matrix };
 }
 
+function getPersonTotals(matrix) {
+  const totals = new Map();
+  matrix.forEach((row) => {
+    if (!row.persona) return;
+    totals.set(row.persona, (totals.get(row.persona) || 0) + Number(row.total || 0));
+  });
+  return totals;
+}
+
+function getPersonRowSpans(matrix) {
+  const spans = new Map();
+  matrix.forEach((row) => {
+    if (!row.persona) return;
+    spans.set(row.persona, (spans.get(row.persona) || 0) + 1);
+  });
+  return spans;
+}
+
+function complianceClass(percent) {
+  if (percent >= 98) return 'ok';
+  if (percent >= 85) return 'warning';
+  return 'danger';
+}
+
+function complianceText(percent) {
+  if (percent >= 98) return 'Cumple';
+  if (percent >= 85) return 'Cerca';
+  return 'Revisar';
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
@@ -56,16 +124,36 @@ function fileDate(value) {
   return String(value || '').replace(/[^0-9-]/g, '');
 }
 
-function downloadExcel({ rows, mode, filters, filterLabels }) {
+function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, expectedTotal, businessDays, period }) {
   const { eventTypes, matrix } = getMatrixData(rows, mode);
-  const headers = [mode === 'persona' ? 'Persona' : null, 'Proyecto', ...eventTypes.map(labelType), 'Total horas', 'Registros'].filter(Boolean);
-  const bodyRows = matrix.map((row) => [
-    ...(mode === 'persona' ? [row.persona] : []),
-    row.proyecto,
-    ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)),
-    Number(row.total || 0).toFixed(2),
-    Number(row.registros || 0).toFixed(0),
-  ]);
+  const personTotals = getPersonTotals(matrix);
+  const headers = mode === 'persona'
+    ? ['Persona', 'Proyecto', ...eventTypes.map(labelType), 'Total fila', 'Total persona', 'Estimado persona', 'Cumplimiento %', 'Estado', 'Registros']
+    : ['Proyecto', ...eventTypes.map(labelType), 'Total horas', 'Registros'];
+  const bodyRows = matrix.map((row) => {
+    if (mode === 'persona') {
+      const personTotal = Number(personTotals.get(row.persona) || 0);
+      const percent = expectedPerPerson > 0 ? (personTotal / expectedPerPerson) * 100 : 0;
+      return [
+        row.persona,
+        row.proyecto,
+        ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)),
+        Number(row.total || 0).toFixed(2),
+        personTotal.toFixed(2),
+        Number(expectedPerPerson || 0).toFixed(2),
+        percent.toFixed(0),
+        complianceText(percent),
+        Number(row.registros || 0).toFixed(0),
+      ];
+    }
+
+    return [
+      row.proyecto,
+      ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)),
+      Number(row.total || 0).toFixed(2),
+      Number(row.registros || 0).toFixed(0),
+    ];
+  });
 
   const filterRows = [
     ['Desde', filters.from || ''],
@@ -74,6 +162,9 @@ function downloadExcel({ rows, mode, filters, filterLabels }) {
     ['Persona', filterLabels.person || 'Todas'],
     ['Actividad', filterLabels.eventType || 'Todas'],
     ['Vista', mode === 'persona' ? 'Personas' : 'Proyectos'],
+    ['Periodo estimado', period],
+    ['Dias habiles', businessDays],
+    ['Total estimado horas', Number(expectedTotal || 0).toFixed(2)],
   ];
 
   const html = `
@@ -116,35 +207,68 @@ function downloadExcel({ rows, mode, filters, filterLabels }) {
   URL.revokeObjectURL(url);
 }
 
-function MatrixTable({ rows, mode }) {
+function MatrixTable({ rows, mode, expectedPerPerson }) {
   const { eventTypes, matrix } = useMemo(() => getMatrixData(rows, mode), [rows, mode]);
+  const personTotals = useMemo(() => getPersonTotals(matrix), [matrix]);
+  const personRowSpans = useMemo(() => getPersonRowSpans(matrix), [matrix]);
+  const visibleMatrix = useMemo(() => {
+    if (mode !== 'persona') return matrix;
+    return [...matrix].sort((a, b) => {
+      const byPerson = String(a.persona || '').localeCompare(String(b.persona || ''), 'es');
+      if (byPerson !== 0) return byPerson;
+      return String(a.proyecto || '').localeCompare(String(b.proyecto || ''), 'es');
+    });
+  }, [matrix, mode]);
 
   if (!matrix.length) {
     return <div className="emptyState">No hay datos para los filtros seleccionados.</div>;
   }
 
+  const renderedPeople = new Set();
+
   return (
-    <div className="tableWrap">
-      <table>
+    <div className="tableWrap hoursTableWrap">
+      <table className="hoursMatrixTable">
         <thead>
           <tr>
             {mode === 'persona' && <th>Persona</th>}
             <th>Proyecto</th>
             {eventTypes.map((type) => <th className="number" key={type}>{labelType(type)}</th>)}
-            <th className="number">Total</th>
+            <th className="number">Total fila</th>
+            {mode === 'persona' && <th>Cumplimiento</th>}
             <th className="number">Registros</th>
           </tr>
         </thead>
         <tbody>
-          {matrix.map((row) => (
-            <tr key={`${row.persona || ''}-${row.proyecto}`}>
-              {mode === 'persona' && <td><strong>{row.persona}</strong></td>}
-              <td>{row.proyecto}</td>
-              {eventTypes.map((type) => <td className="number" key={type}>{formatHours(row.byType[type])}</td>)}
-              <td className="number"><strong>{formatHours(row.total)}</strong></td>
-              <td className="number">{formatHours(row.registros)}</td>
-            </tr>
-          ))}
+          {visibleMatrix.map((row) => {
+            const isFirstPersonRow = mode === 'persona' && !renderedPeople.has(row.persona);
+            if (isFirstPersonRow) renderedPeople.add(row.persona);
+            const personTotal = Number(personTotals.get(row.persona) || 0);
+            const percent = expectedPerPerson > 0 ? (personTotal / expectedPerPerson) * 100 : 0;
+            const status = complianceClass(percent);
+            const rowKey = `${row.persona || ''}-${row.proyecto}`;
+
+            return (
+              <tr key={rowKey} className={mode === 'persona' ? `personStatus-${status}` : ''}>
+                {mode === 'persona' && isFirstPersonRow && (
+                  <td className="personGroupCell" rowSpan={personRowSpans.get(row.persona)}>
+                    <strong>{row.persona}</strong>
+                    <small>{formatHours(personTotal)} hs cargadas</small>
+                  </td>
+                )}
+                <td>{row.proyecto}</td>
+                {eventTypes.map((type) => <td className="number" key={type}>{formatHours(row.byType[type])}</td>)}
+                <td className="number"><strong>{formatHours(row.total)}</strong></td>
+                {mode === 'persona' && isFirstPersonRow && (
+                  <td className="complianceCell" rowSpan={personRowSpans.get(row.persona)}>
+                    <span className={`hoursCompliance ${status}`}>{complianceText(percent)} · {formatPercent(percent)}</span>
+                    <small>Meta {formatHours(expectedPerPerson)} hs</small>
+                  </td>
+                )}
+                <td className="number">{formatHours(row.registros)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -181,6 +305,12 @@ export default function ReporteHorasPage() {
   }, []);
 
   const rows = view === 'persona' ? data?.byPerson || [] : data?.byTeam || [];
+  const businessDays = businessDaysBetween(filters.from, filters.to);
+  const expectedPerPerson = businessDays * 8;
+  const estimatedTotal = Number(data?.summary?.personas || 0) * expectedPerPerson;
+  const loadedHours = Number(data?.summary?.horas || 0);
+  const coveragePercent = estimatedTotal > 0 ? (loadedHours / estimatedTotal) * 100 : 0;
+  const selectedPeriod = periodLabel(filters.from, filters.to);
   const modelPending = data && data.modelReady === false;
   const selectedProject = (data?.filtersData?.projects || []).find((project) => String(project.project_id) === String(filters.projectId));
   const selectedPerson = (data?.filtersData?.people || []).find((person) => String(person.person_id) === String(filters.personId));
@@ -191,6 +321,10 @@ export default function ReporteHorasPage() {
       rows,
       mode: view,
       filters,
+      expectedPerPerson,
+      expectedTotal: estimatedTotal,
+      businessDays,
+      period: selectedPeriod,
       filterLabels: {
         project: selectedProject?.proyecto || selectedProject?.project_key_rpt || '',
         person: selectedPerson?.persona || '',
@@ -265,8 +399,17 @@ export default function ReporteHorasPage() {
       {error && <div className="errorBox">{error}</div>}
       {modelPending && <div className="errorBox">{data.setupMessage}</div>}
 
-      <section className="kpiGrid">
-        <article><span>Horas</span><strong>{formatHours(data?.summary?.horas)}</strong></article>
+      <section className="kpiGrid hoursKpiGrid">
+        <article className="estimatedHoursCard">
+          <span>Total estimado horas del mes</span>
+          <strong>{formatHours(estimatedTotal)}</strong>
+          <small>{selectedPeriod} · {formatHours(data?.summary?.personas)} personas · {businessDays} dias habiles</small>
+        </article>
+        <article>
+          <span>Horas</span>
+          <strong>{formatHours(data?.summary?.horas)}</strong>
+          <small>{formatPercent(coveragePercent)} del estimado</small>
+        </article>
         <article><span>Personas</span><strong>{formatHours(data?.summary?.personas)}</strong></article>
         <article><span>Proyectos</span><strong>{formatHours(data?.summary?.proyectos)}</strong></article>
         <article><span>Registros</span><strong>{formatHours(data?.summary?.registros)}</strong></article>
@@ -286,7 +429,7 @@ export default function ReporteHorasPage() {
             <button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button>
           </div>
         </div>
-        {loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} />}
+        {loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} expectedPerPerson={expectedPerPerson} />}
       </section>
     </main>
   );
