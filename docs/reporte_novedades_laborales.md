@@ -53,6 +53,20 @@ Si el rango cruza un fin de semana, sabado y domingo no suman horas.
 - Equipo
 - Tipo de novedad
 
+## Exportacion a Excel
+
+La pantalla incluye el boton `Exportar Excel`.
+
+La exportacion usa exactamente los filtros aplicados en pantalla e incluye:
+
+- Filtros aplicados.
+- Resumen del periodo.
+- Distribucion por tipo.
+- Agrupacion visible: personas o equipos, segun la vista seleccionada.
+- Detalle de novedades.
+
+El archivo se genera en el navegador como `.xls` compatible con Excel, sin agregar dependencias al proyecto Next.js.
+
 ## Salidas del reporte
 
 La pantalla muestra:
