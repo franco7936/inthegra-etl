@@ -3,12 +3,31 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-function todayRange() {
+function monthRange(monthValue) {
+  const [year, month] = String(monthValue || '').split('-').map(Number);
+  const safeDate = year && month ? new Date(Date.UTC(year, month - 1, 1)) : new Date();
+  const safeYear = safeDate.getUTCFullYear();
+  const safeMonth = safeDate.getUTCMonth() + 1;
+  const monthKey = `${safeYear}-${String(safeMonth).padStart(2, '0')}`;
+  const from = `${monthKey}-01`;
+  const lastDay = new Date(Date.UTC(safeYear, safeMonth, 0)).getUTCDate();
+  const to = `${monthKey}-${String(lastDay).padStart(2, '0')}`;
+  return { month: monthKey, from, to };
+}
+
+function currentMonthRange() {
   const now = new Date();
-  const to = now.toISOString().slice(0, 10);
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const from = `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, '0')}-01`;
-  return { from, to };
+  return monthRange(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+}
+
+function monthTitle(monthValue) {
+  const { from } = monthRange(monthValue);
+  const date = new Date(`${from}T00:00:00Z`);
+  return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+
+function reportFilters(filters) {
+  return { from: filters.from, to: filters.to };
 }
 
 function TrendIcon({ trend }) {
@@ -42,8 +61,8 @@ function IndicatorSection({ section }) {
 }
 
 export default function EntregaCalidadPage() {
-  const initial = todayRange();
-  const [filters, setFilters] = useState({ from: initial.from, to: initial.to });
+  const initial = currentMonthRange();
+  const [filters, setFilters] = useState({ month: initial.month, from: initial.from, to: initial.to });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,7 +70,7 @@ export default function EntregaCalidadPage() {
   async function loadData(nextFilters = filters) {
     setLoading(true);
     setError('');
-    const params = new URLSearchParams(nextFilters);
+    const params = new URLSearchParams(reportFilters(nextFilters));
     try {
       const response = await fetch(`/api/reportes/entrega-calidad?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json();
@@ -71,15 +90,16 @@ export default function EntregaCalidadPage() {
 
   const modelPending = data && data.modelReady === false;
 
+  function handleMonthChange(value) {
+    setFilters({ ...filters, ...monthRange(value) });
+  }
+
   return (
     <main className="shell reportShell deliveryShell">
       <nav className="topbar">
         <Link className="brand" href="/">
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
-          <span>
-            <strong>Inthegra Reports</strong>
-            <small>Indicadores de servicio</small>
-          </span>
+          <span><strong>Inthegra Reports</strong><small>Indicadores de servicio</small></span>
         </Link>
         <Link className="navLink" href="/">Inicio</Link>
       </nav>
@@ -96,14 +116,7 @@ export default function EntregaCalidadPage() {
       </section>
 
       <section className="deliveryFilters">
-        <label>
-          Desde
-          <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
-        </label>
-        <label>
-          Hasta
-          <input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
-        </label>
+        <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
         <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
       </section>
 
@@ -115,6 +128,7 @@ export default function EntregaCalidadPage() {
         <section className="indicatorSection"><div className="emptyState">Cargando indicadores...</div></section>
       ) : (
         <div className="indicatorBoard">
+          <p className="periodCaption">Periodo: {monthTitle(filters.month)}</p>
           {(data?.sections || []).map((section) => <IndicatorSection key={section.id} section={section} />)}
         </div>
       )}
