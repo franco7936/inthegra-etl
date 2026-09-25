@@ -5,6 +5,8 @@
 - `person_id`, desde `map_personas`.
 - `project_id`, desde `map_equipo_proyecto`.
 
+Regla dura: `at_workload` no debe conservar filas con `person_id IS NULL`. Si ActivityTimeline entrega un registro sin identidad de persona o sin match contra `map_personas`, el ETL lo omite y lo informa en logs.
+
 ## Claves fuente guardadas
 
 Ademas de los IDs normalizados, el ETL guarda estas claves originales de ActivityTimeline:
@@ -35,6 +37,8 @@ COALESCE(map_personas.activo, 1) = 1
 ```
 
 Esto es necesario porque en ActivityTimeline los `BOOKING`, `DAY_OFF`, `HOLIDAY` y otros eventos no Jira vienen dentro de cada `member` del endpoint `timeline`. La persona esta en el `member`, no siempre dentro del item individual. Por eso el ETL debe arrastrar las claves del `member` hacia cada fila de `at_workload`.
+
+El endpoint `worklog/list` puede devolver elementos de calendario o bookings sin identidad de persona dentro del item. Esos registros se omiten porque no son confiables para un reporte por persona. La fuente preferida para esos eventos es `timeline`, donde vienen agrupados por miembro.
 
 Si hay mas de una fila activa con el mismo `username_at` o `email_at`, el ETL toma el menor `person_id` y deja un warning en logs. La correccion correcta es dejar una sola fila activa por clave.
 
@@ -69,6 +73,16 @@ WHERE estado_persona <> 'OK'
 SELECT *
 FROM VW_AUDITORIA_MAP_DUPLICADOS;
 ```
+
+Validacion dura esperada:
+
+```sql
+SELECT COUNT(*)
+FROM at_workload
+WHERE person_id IS NULL;
+```
+
+Debe devolver `0`.
 
 ## Como corregir mapas
 
