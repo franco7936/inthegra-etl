@@ -41,6 +41,9 @@ h1, h2, p { margin-top: 0; }
 .primaryButton { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 18px; border: 1px solid var(--orange); border-radius: 8px; background: var(--orange); color: #ffffff; font-weight: 850; text-decoration: none; cursor: pointer; }
 .primaryButton:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
 .primaryButton.compact { min-height: 42px; }
+.secondaryButton { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--navy); font-weight: 850; cursor: pointer; white-space: nowrap; }
+.secondaryButton:hover:not(:disabled) { border-color: var(--orange); color: var(--orange-dark); }
+.secondaryButton:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .contentGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 40px 32px; }
 .reportsGridThree { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -59,6 +62,7 @@ h1, h2, p { margin-top: 0; }
 .status.error, .errorBox { background: #fff4f2; color: #b42318; }
 .warningBox { width: min(1180px, calc(100% - 64px)); margin: 16px auto 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff8e6; color: #8a5a00; font-weight: 750; box-shadow: 0 14px 34px rgba(15, 32, 67, 0.07); }
 .filtersPanel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; align-items: end; padding: 20px; }
+.hoursFiltersPanel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .filtersPanel label { display: grid; gap: 7px; color: var(--muted); font-size: 13px; font-weight: 800; }
 .filtersPanel input, .filtersPanel select, .deliveryFilters input, .investmentFilters input, .investmentFilters select, .qualityFilters input, .qualityFilters select { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); padding: 0 10px; }
 .errorBox { width: min(1180px, calc(100% - 64px)); margin: 16px auto 0; padding: 14px 16px; font-weight: 750; }
@@ -70,6 +74,7 @@ h1, h2, p { margin-top: 0; }
 .panelHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid var(--line); }
 .panelHeader h2 { margin-bottom: 4px; }
 .panelHeader p { margin: 0; color: var(--muted); }
+.panelActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .segmented { display: inline-grid; grid-template-columns: repeat(2, 1fr); overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
 .segmented button { min-height: 38px; padding: 0 14px; border: 0; background: #fff; color: var(--muted); font-weight: 850; cursor: pointer; }
 .segmented button.active { background: var(--orange); color: #fff; }
@@ -224,6 +229,7 @@ td { color: #263247; }
 
 @media (max-width: 1180px) {
   .reportsGridFive { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hoursFiltersPanel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1050px) {
@@ -234,10 +240,12 @@ td { color: #263247; }
 
 @media (max-width: 900px) {
   .topbar, .pageHeader, .deliveryHeader, .investmentHero, .qualityHeader { align-items: flex-start; flex-direction: column; }
-  .contentGrid, .filtersPanel, .kpiGrid, .deliveryFilters, .investmentFilters, .investmentSummary, .investmentGrid, .qualityFilters, .qualityHighlights, .qualityGrid, .qaOverview, .qaAdditionalGrid, .laborFilters, .laborOverview, .laborCharts { grid-template-columns: 1fr; }
+  .contentGrid, .filtersPanel, .kpiGrid, .deliveryFilters, .investmentFilters, .investmentSummary, .investmentGrid, .qualityFilters, .qualityHighlights, .qualityGrid, .qaOverview, .laborFilters, .laborOverview, .laborCharts { grid-template-columns: 1fr; }
   .hero, .contentGrid, .pageHeader, .filtersPanel, .deliveryHeader, .deliveryFilters, .indicatorBoard, .investmentHero, .investmentFilters, .investmentSummary, .investmentGrid, .qualityHeader, .qualityFilters, .qualityHighlights, .qualityGrid, .qaOverview, .laborOverview, .laborCharts { padding-left: 18px; padding-right: 18px; }
   .kpiGrid, .errorBox, .warningBox { width: calc(100% - 36px); }
   .deliveryMeta { justify-items: start; white-space: normal; }
+  .panelHeader { align-items: flex-start; flex-direction: column; }
+  .panelActions { justify-content: flex-start; }
 }
 
 @media (max-width: 560px) {
