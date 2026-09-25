@@ -16,24 +16,32 @@ API:
 
 El reporte permite filtrar por:
 
-- Fecha desde
-- Fecha hasta
+- Mes
 - Proyecto
 - Persona
 - Tipo de actividad
 
-El filtro de persona usa `person_id` desde `VW_REPORTE_HORAS_DETALLE` y lista las personas disponibles para el periodo seleccionado.
+El selector de mes calcula automaticamente el rango completo:
+
+```text
+from = primer dia del mes seleccionado
+to = ultimo dia del mes seleccionado
+```
+
+La API sigue recibiendo `from` y `to` para mantener estable la consulta contra Turso.
+
+El filtro de persona usa `person_id` desde `VW_REPORTE_HORAS_DETALLE` y lista las personas disponibles para el mes seleccionado.
 
 ## Indicadores principales
 
 La pantalla muestra:
 
-- Total estimado de horas del periodo: `personas con horas en el resultado * 8 horas * dias habiles entre Desde y Hasta`.
+- Total estimado de horas del mes: `personas con horas en el resultado * 8 horas * dias habiles del mes`.
 - Horas cargadas reales.
 - Porcentaje de cobertura contra el estimado.
 - Personas, proyectos y registros incluidos en el filtro.
 
-El texto del estimado muestra el mes o rango de meses seleccionado, la cantidad de personas consideradas y los dias habiles calculados.
+El texto del estimado muestra el mes seleccionado, la cantidad de personas consideradas y los dias habiles calculados.
 
 ## Cumplimiento por persona
 
@@ -42,7 +50,7 @@ En la vista `Personas`, la grilla agrupa por persona y muestra una fila por cada
 Para cada persona se calcula:
 
 ```text
-horas esperadas = 8 * dias habiles del periodo filtrado
+horas esperadas = 8 * dias habiles del mes seleccionado
 cumplimiento = total horas cargadas por persona / horas esperadas
 ```
 
@@ -52,7 +60,7 @@ Estados visuales:
 - `Cerca`: desde 85% y menor a 98%.
 - `Revisar`: menor a 85%.
 
-Esto sirve para detectar rapidamente si faltan horas de carga por persona en el mes o periodo revisado.
+Esto sirve para detectar rapidamente si faltan horas de carga por persona en el mes revisado.
 
 ## Exportacion a Excel
 
@@ -62,7 +70,7 @@ La exportacion toma exactamente la vista filtrada que esta viendo el usuario:
 
 - Si esta seleccionada la vista `Personas`, exporta la matriz por persona/proyecto/tipo de actividad e incluye total por persona, estimado por persona, porcentaje de cumplimiento y estado.
 - Si esta seleccionada la vista `Proyectos`, exporta la matriz por proyecto/tipo de actividad.
-- El archivo incluye los filtros aplicados, el periodo estimado, los dias habiles y el total estimado de horas.
+- El archivo incluye el mes aplicado, el rango `from/to`, los dias habiles y el total estimado de horas.
 
 El archivo se genera en el navegador como `.xls` compatible con Excel, sin agregar dependencias al proyecto Next.js.
 
