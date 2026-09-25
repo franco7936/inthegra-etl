@@ -1,15 +1,17 @@
 """
-Runner v2 para aplicar matching robusto de personas en ActivityTimeline.
+Runner v2 para aplicar matching robusto de personas y proyectos en ActivityTimeline.
 
 Importa etl_runner para conservar las protecciones actuales y agrega:
 - columnas fuente adicionales en at_workload: user_real_name_at y user_email_at;
 - columna email_at en map_personas;
 - match de person_id por username, email o nombre real;
+- match de project_id solo contra proyectos Jira confiables;
 - extraccion de bookings desde timeline manteniendo la persona del member;
-- bloqueo de filas at_workload sin person_id.
+- bloqueo de filas at_workload sin person_id o sin project_id valido.
 """
 
 import os
+import re
 import time
 
 import etl
@@ -166,6 +168,30 @@ def mapas_personas_v2(conn):
     return {"username": by_username, "name": by_name, "email": by_email}
 
 
+def mapa_project_por_key_jira(conn):
+    rows = conn.execute("""
+        SELECT project_id, project_key_rpt
+        FROM map_equipo_proyecto
+        WHERE project_key_rpt IS NOT NULL
+          AND TRIM(project_key_rpt) <> ''
+          AND COALESCE(activo, 1) = 1
+        ORDER BY project_id
+    """).fetchall()
+    mapping = {}
+    duplicates = set()
+    for project_id, project_key in rows:
+        key = str(project_key or "").strip().upper()
+        if not key:
+            continue
+        if key in mapping:
+            duplicates.add(key)
+            continue
+        mapping[key] = project_id
+    if duplicates:
+        etl.log.warning("map_equipo_proyecto tiene project_key_rpt duplicados: %s", ", ".join(sorted(duplicates)[:10]))
+    return mapping
+
+
 def person_id_for(maps, username=None, real_name=None, email=None):
     return (
         maps["username"].get(_norm(username))
@@ -208,6 +234,43 @@ def _item_identity(item):
     }
 
 
+def _project_key_from_item_v2(item, project_by_key):
+    explicit = _first_value(item.get("projectKey"), item.get("project"), _nested(item.get("project") if isinstance(item.get("project"), dict) else {}, "key"))
+    if explicit:
+        key = str(explicit).strip().upper()
+        if key in project_by_key:
+            return key
+
+    candidates = []
+    issue_key = str(item.get("issueKey") or "").strip().upper()
+    if issue_key:
+        if "-" in issue_key:
+            candidates.append(issue_key.split("-", 1)[0])
+        candidates.append(issue_key)
+
+    summary = str(item.get("summary") or item.get("comment") or "").upper()
+    bracket_match = re.search(r"\[BOOKING\]\s*([A-Z0-9_]+)", summary)
+    if bracket_match:
+        candidates.append(bracket_match.group(1))
+
+    for candidate in candidates:
+        candidate = re.sub(r"[^A-Z0-9_].*$", "", candidate)
+        if candidate in project_by_key:
+            return candidate
+
+    for key in sorted(project_by_key, key=len, reverse=True):
+        if issue_key.startswith(key):
+            return key
+        if summary.startswith(key) or f" {key} " in f" {summary} ":
+            return key
+
+    return ""
+
+
+def project_id_for(project_by_key, project_key):
+    return project_by_key.get(str(project_key or "").strip().upper())
+
+
 def _log_missing_identity(source, team_name, item):
     etl.log.warning(
         "AT %s omitido sin persona | team=%s issue=%s type=%s summary=%s keys=%s",
@@ -220,11 +283,28 @@ def _log_missing_identity(source, team_name, item):
     )
 
 
+def _log_missing_project(source, team_name, item, project_key):
+    etl.log.warning(
+        "AT %s omitido sin proyecto Jira | team=%s project_key=%s issue=%s type=%s summary=%s",
+        source,
+        team_name,
+        project_key,
+        item.get("issueKey", ""),
+        item.get("issueType", item.get("recordType", "")),
+        (item.get("summary") or item.get("comment") or "")[:120],
+    )
+
+
 def _append_row(rows, row, counters, source, team_name, item):
     if not row.get("person_id"):
         counters["sin_persona"] += 1
         counters["omitidos"] += 1
         _log_missing_identity(source, team_name, item)
+        return False
+    if not row.get("project_id"):
+        counters["sin_proyecto"] += 1
+        counters["omitidos"] += 1
+        _log_missing_project(source, team_name, item, row.get("project_key_at"))
         return False
     rows.append(row)
     return True
@@ -235,14 +315,13 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
         return
 
     ensure_match_columns(conn)
-    etl.log.info("ActivityTimeline workload consolidado con match robusto de persona...")
+    etl.log.info("ActivityTimeline workload consolidado con match robusto de persona y proyecto...")
     now = etl.now_iso()
     start, end = etl.rango_at(full)
     person_maps = mapas_personas_v2(conn)
-    project_by_team = etl_runner.mapa_project_por_team_seguro(conn)
-    project_by_key = etl_runner.mapa_project_por_key_seguro(conn)
+    project_by_key = mapa_project_por_key_jira(conn)
     rows = []
-    counters = {"sin_persona": 0, "omitidos": 0}
+    counters = {"sin_persona": 0, "sin_proyecto": 0, "omitidos": 0}
 
     max_pages_per_team = int(os.getenv("AT_WORKLOG_MAX_PAGES_PER_TEAM", "25"))
     max_rows_per_team = int(os.getenv("AT_WORKLOG_MAX_ROWS_PER_TEAM", "10000"))
@@ -267,10 +346,10 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
                     tiempo = item.get("dailyTimeEstimate")
                     if tiempo is None:
                         tiempo = item.get("originalTimeEstimate")
-                    project_key = etl_runner._project_key_from_item(item)
+                    project_key = _project_key_from_item_v2(item, project_by_key)
                     _append_row(rows, {
                         "person_id": person_id,
-                        "project_id": etl_runner._project_id_for(project_by_key, project_by_team, project_key, team_id),
+                        "project_id": project_id_for(project_by_key, project_key),
                         "username_at": identity["username"],
                         "team_id_at": team_id,
                         "project_key_at": project_key,
@@ -329,12 +408,12 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
                     identity = _item_identity(item)
                     person_id = person_id_for(person_maps, **identity)
                     issue_key = item.get("issueKey", "")
-                    project_key = etl_runner._project_key_from_item(item)
+                    project_key = _project_key_from_item_v2(item, project_by_key)
                     is_worklog = bool(item.get("worklogId"))
                     event_type = "WORKLOG" if is_worklog else item.get("issueType", "CALENDAR_EVENT")
                     _append_row(rows, {
                         "person_id": person_id,
-                        "project_id": etl_runner._project_id_for(project_by_key, project_by_team, project_key, team_id),
+                        "project_id": project_id_for(project_by_key, project_key),
                         "username_at": identity["username"],
                         "team_id_at": team_id,
                         "project_key_at": project_key,
@@ -371,32 +450,63 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
 
     conn.execute("DELETE FROM at_workload WHERE planned_start >= ? AND planned_start <= ?", (start, end))
     conn.commit()
-    detalle = f"{start} a {end}; sin_persona={counters['sin_persona']}; omitidos={counters['omitidos']}"
+    detalle = f"{start} a {end}; sin_persona={counters['sin_persona']}; sin_proyecto={counters['sin_proyecto']}; omitidos={counters['omitidos']}"
     etl.log_etl(conn, modo, "at_workload", etl.upsert(conn, "at_workload", rows), detalle=detalle)
-    limpiar_at_workload_sin_persona(conn, start, end)
+    limpiar_at_workload_invalido(conn, start, end)
     rematchear_at_workload_ids_v2(conn)
 
 
 def limpiar_at_workload_sin_persona(conn, start=None, end=None):
+    limpiar_at_workload_invalido(conn, start, end)
+
+
+def limpiar_at_workload_invalido(conn, start=None, end=None):
+    date_clause = ""
+    params = []
     if start and end:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM at_workload WHERE person_id IS NULL AND planned_start >= ? AND planned_start <= ?",
-            (start, end),
-        ).fetchone()
-        count = int(row[0] or 0) if row else 0
-        conn.execute("DELETE FROM at_workload WHERE person_id IS NULL AND planned_start >= ? AND planned_start <= ?", (start, end))
-    else:
-        row = conn.execute("SELECT COUNT(*) FROM at_workload WHERE person_id IS NULL").fetchone()
-        count = int(row[0] or 0) if row else 0
-        conn.execute("DELETE FROM at_workload WHERE person_id IS NULL")
+        date_clause = "AND planned_start >= ? AND planned_start <= ?"
+        params = [start, end]
+
+    row = conn.execute(f"""
+        SELECT COUNT(*)
+        FROM at_workload
+        WHERE (
+            person_id IS NULL
+            OR project_id IS NULL
+            OR project_id NOT IN (
+                SELECT project_id
+                FROM map_equipo_proyecto
+                WHERE project_key_rpt IS NOT NULL
+                  AND TRIM(project_key_rpt) <> ''
+                  AND COALESCE(activo, 1) = 1
+            )
+        )
+        {date_clause}
+    """, params).fetchone()
+    count = int(row[0] or 0) if row else 0
+    conn.execute(f"""
+        DELETE FROM at_workload
+        WHERE (
+            person_id IS NULL
+            OR project_id IS NULL
+            OR project_id NOT IN (
+                SELECT project_id
+                FROM map_equipo_proyecto
+                WHERE project_key_rpt IS NOT NULL
+                  AND TRIM(project_key_rpt) <> ''
+                  AND COALESCE(activo, 1) = 1
+            )
+        )
+        {date_clause}
+    """, params)
     conn.commit()
     if count:
-        etl.log.warning("at_workload: %s filas sin person_id eliminadas", count)
+        etl.log.warning("at_workload: %s filas sin persona o sin proyecto Jira eliminadas", count)
 
 
 def rematchear_at_workload_ids_v2(conn):
     ensure_match_columns(conn)
-    etl.log.info("Rematcheando at_workload por username, email o nombre real...")
+    etl.log.info("Rematcheando at_workload por username, email, nombre real y project_key...")
     conn.execute("""
         UPDATE at_workload
         SET person_id = COALESCE(
@@ -439,29 +549,20 @@ def rematchear_at_workload_ids_v2(conn):
     """)
     conn.execute("""
         UPDATE at_workload
-        SET project_id = COALESCE(
-            (
-                SELECT me.project_id
-                FROM map_equipo_proyecto me
-                WHERE upper(trim(me.project_key_rpt)) = upper(trim(at_workload.project_key_at))
-                  AND COALESCE(me.activo, 1) = 1
-                ORDER BY me.project_id
-                LIMIT 1
-            ),
-            (
-                SELECT me.project_id
-                FROM map_equipo_proyecto me
-                WHERE trim(me.team_id_at) = trim(at_workload.team_id_at)
-                  AND COALESCE(me.activo, 1) = 1
-                ORDER BY me.project_id
-                LIMIT 1
-            )
+        SET project_id = (
+            SELECT me.project_id
+            FROM map_equipo_proyecto me
+            WHERE upper(trim(me.project_key_rpt)) = upper(trim(at_workload.project_key_at))
+              AND me.project_key_rpt IS NOT NULL
+              AND trim(me.project_key_rpt) <> ''
+              AND COALESCE(me.activo, 1) = 1
+            ORDER BY me.project_id
+            LIMIT 1
         )
-        WHERE (project_key_at IS NOT NULL AND trim(project_key_at) <> '')
-           OR (team_id_at IS NOT NULL AND trim(team_id_at) <> '')
+        WHERE project_key_at IS NOT NULL AND trim(project_key_at) <> ''
     """)
     conn.commit()
-    limpiar_at_workload_sin_persona(conn)
+    limpiar_at_workload_invalido(conn)
 
 
 _original_refrescar_vistas = etl.refrescar_vistas
