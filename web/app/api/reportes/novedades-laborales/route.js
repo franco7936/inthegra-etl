@@ -15,7 +15,7 @@ const DEMO_ROWS = [
 
 const EVENT_LABELS = {
   day_off: 'Day off',
-  holiday: 'Holiday',
+  holiday: 'Vacaciones',
   overtime: 'Horas extras',
 };
 
