@@ -20,17 +20,19 @@ VW_NOVEDADES_LABORALES
 
 ## Datos incluidos
 
-El reporte toma novedades desde `at_workload` y normaliza estos tipos:
+El reporte toma novedades desde `at_workload` y normaliza estos grupos:
 
-- `day_off`
-- `holiday`
-- `overtime`
+- `day_off`: day off, time off y variantes escritas como `dayoff` o `day-off`.
+- `holiday`: vacaciones, holiday, feriados/festivos, PTO y variantes equivalentes. En pantalla se muestra como `Vacaciones`.
+- `overtime`: horas extras y variantes escritas como `overtime`, `extra_hours` o `horas extras`.
+
+La normalizacion revisa tanto `event_type` como `summary`, porque ActivityTimeline puede traer la clasificacion en cualquiera de esos campos segun el tipo de registro.
 
 ## Calculo de horas
 
 Para `overtime` se usan las horas informadas por ActivityTimeline.
 
-Para `day_off` y `holiday`:
+Para `day_off` y `holiday`/vacaciones:
 
 1. Si ActivityTimeline informa horas, se usan esas horas.
 2. Si no informa horas o informa `0`, se calculan horas por dias laborables.
