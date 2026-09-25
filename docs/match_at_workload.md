@@ -5,7 +5,13 @@
 - `person_id`, desde `map_personas`.
 - `project_id`, desde `map_equipo_proyecto`.
 
-Regla dura: `at_workload` no debe conservar filas con `person_id IS NULL`. Si ActivityTimeline entrega un registro sin identidad de persona o sin match contra `map_personas`, el ETL lo omite y lo informa en logs.
+Reglas duras:
+
+- `at_workload` no debe conservar filas con `person_id IS NULL`.
+- `at_workload` no debe conservar filas sin `project_id` valido.
+- `project_id` debe corresponder a una fila activa de `map_equipo_proyecto` con `project_key_rpt` informado.
+
+Si ActivityTimeline entrega un registro sin identidad de persona o sin proyecto Jira confiable, el ETL lo omite y lo informa en logs.
 
 ## Claves fuente guardadas
 
@@ -16,8 +22,8 @@ Ademas de los IDs normalizados, el ETL guarda estas claves originales de Activit
 | `username_at` | Usuario original de ActivityTimeline. Es la primera clave para rematchear `person_id`. |
 | `user_real_name_at` | Nombre real informado por ActivityTimeline en el `member` o en el item. Se usa como fallback de persona. |
 | `user_email_at` | Email informado por ActivityTimeline. Se usa como fallback de persona. |
-| `team_id_at` | Equipo original de ActivityTimeline. Se usa como fallback para rematchear `project_id`. |
-| `project_key_at` | Project key detectado desde ActivityTimeline o desde `issue_key`. Es la primera opcion para rematchear `project_id`. |
+| `team_id_at` | Equipo original de ActivityTimeline. Se conserva para auditoria, pero no alcanza para cargar horas. |
+| `project_key_at` | Project key detectado desde ActivityTimeline, desde `issue_key` o desde el resumen del booking. Es la clave para rematchear `project_id`. |
 
 Estas columnas son importantes porque permiten corregir `map_personas` o `map_equipo_proyecto` y recalcular asociaciones sin depender solamente de IDs viejos.
 
@@ -44,12 +50,18 @@ Si hay mas de una fila activa con el mismo `username_at` o `email_at`, el ETL to
 
 ## Regla de proyectos
 
-Para `at_workload.project_id` se usa este orden:
+Para `at_workload.project_id` se usa `project_key_at` contra `map_equipo_proyecto.project_key_rpt`.
 
-1. `project_key_at` contra `map_equipo_proyecto.project_key_rpt`.
-2. Si no hay match, `team_id_at` contra `map_equipo_proyecto.team_id_at`.
+El ETL ya no usa `team_id_at` como fallback para asignar proyecto, porque puede llevar horas a proyectos incorrectos o a equipos AT que no representan un proyecto Jira real.
 
-Esto evita que todos los registros queden asignados al equipo iterado cuando ActivityTimeline entrega un `issue_key` de otro proyecto.
+`project_key_at` se detecta desde:
+
+1. `projectKey` si viene informado por ActivityTimeline.
+2. El prefijo de `issue_key` cuando viene con formato Jira, por ejemplo `HC-123`.
+3. El inicio de IDs sin guion si coinciden con una key conocida, por ejemplo `BUSINESS...`.
+4. El resumen de bookings con formato similar a `[Booking] BUSINESS | ...`.
+
+Si no se detecta una key Jira valida, la fila no se carga en `at_workload`.
 
 ## Auditoria
 
@@ -74,7 +86,7 @@ SELECT *
 FROM VW_AUDITORIA_MAP_DUPLICADOS;
 ```
 
-Validacion dura esperada:
+Validaciones duras esperadas:
 
 ```sql
 SELECT COUNT(*)
@@ -82,7 +94,20 @@ FROM at_workload
 WHERE person_id IS NULL;
 ```
 
-Debe devolver `0`.
+```sql
+SELECT COUNT(*)
+FROM at_workload w
+WHERE w.project_id IS NULL
+   OR w.project_id NOT IN (
+      SELECT project_id
+      FROM map_equipo_proyecto
+      WHERE project_key_rpt IS NOT NULL
+        AND TRIM(project_key_rpt) <> ''
+        AND COALESCE(activo, 1) = 1
+   );
+```
+
+Ambas deben devolver `0`.
 
 ## Como corregir mapas
 
