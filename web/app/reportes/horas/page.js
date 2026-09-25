@@ -431,6 +431,26 @@ export default function ReporteHorasPage() {
         </div>
         {loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} expectedPerPerson={expectedPerPerson} />}
       </section>
+
+      <style jsx global>{`
+        .hoursKpiGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        .hoursKpiGrid article small { display: block; margin-top: 8px; color: var(--muted); line-height: 1.4; }
+        .estimatedHoursCard { border-color: #ffb074; background: #fff7f0; }
+        .hoursMatrixTable { min-width: 980px; }
+        .personGroupCell { min-width: 190px; border-right: 1px solid var(--line); background: #f9fbfe; vertical-align: top; }
+        .personGroupCell strong, .personGroupCell small, .complianceCell small { display: block; }
+        .personGroupCell small, .complianceCell small { margin-top: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+        .complianceCell { min-width: 150px; vertical-align: top; }
+        .hoursCompliance { display: inline-flex; min-height: 28px; align-items: center; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 900; white-space: nowrap; }
+        .hoursCompliance.ok { background: #eef9f0; color: #237a35; }
+        .hoursCompliance.warning { background: #fff4e8; color: #b85c00; }
+        .hoursCompliance.danger { background: #fff0f0; color: #b42318; }
+        .personStatus-ok .personGroupCell { border-left: 4px solid var(--green); }
+        .personStatus-warning .personGroupCell { border-left: 4px solid var(--orange); }
+        .personStatus-danger .personGroupCell { border-left: 4px solid var(--red); }
+        @media (max-width: 1180px) { .hoursKpiGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (max-width: 900px) { .hoursKpiGrid { grid-template-columns: 1fr; } }
+      `}</style>
     </main>
   );
 }
