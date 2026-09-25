@@ -63,6 +63,17 @@ to = ultimo dia del mes seleccionado
 
 La API sigue recibiendo `from` y `to` para mantener estable la consulta contra Turso.
 
+Los selectores muestran placeholders operativos:
+
+- `Todos los equipos`
+- `Todos los tipos`
+
+## Placeholder sin datos
+
+Cuando el filtro aplicado no devuelve registros, la pantalla muestra un placeholder con el mensaje `Sin novedades para mostrar`.
+
+Este estado no es un error: indica que no existen novedades de tipo day off, vacaciones u horas extras para el mes y filtros seleccionados, o que todavia falta correr el ETL para actualizar la vista en Turso.
+
 ## Exportacion a Excel
 
 La pantalla incluye el boton `Exportar Excel`.
