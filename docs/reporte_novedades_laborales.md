@@ -48,10 +48,18 @@ Si el rango cruza un fin de semana, sabado y domingo no suman horas.
 
 ## Filtros disponibles
 
-- Fecha desde
-- Fecha hasta
+- Mes
 - Equipo
 - Tipo de novedad
+
+El selector de mes calcula automaticamente el rango completo:
+
+```text
+from = primer dia del mes seleccionado
+to = ultimo dia del mes seleccionado
+```
+
+La API sigue recibiendo `from` y `to` para mantener estable la consulta contra Turso.
 
 ## Exportacion a Excel
 
@@ -59,7 +67,7 @@ La pantalla incluye el boton `Exportar Excel`.
 
 La exportacion usa exactamente los filtros aplicados en pantalla e incluye:
 
-- Filtros aplicados.
+- Mes aplicado y rango `from/to`.
 - Resumen del periodo.
 - Distribucion por tipo.
 - Agrupacion visible: personas o equipos, segun la vista seleccionada.
