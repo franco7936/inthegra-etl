@@ -24,6 +24,7 @@ function readFilters(request) {
     from: searchParams.get('from') || defaults.from,
     to: searchParams.get('to') || defaults.to,
     projectId: searchParams.get('projectId') || '',
+    personId: searchParams.get('personId') || '',
     eventType: searchParams.get('eventType') || '',
   };
 }
@@ -35,6 +36,11 @@ function buildWhere(filters) {
   if (filters.projectId) {
     clauses.push('project_id = ?');
     args.push(Number(filters.projectId));
+  }
+
+  if (filters.personId) {
+    clauses.push('person_id = ?');
+    args.push(Number(filters.personId));
   }
 
   if (filters.eventType) {
@@ -70,7 +76,7 @@ function emptyPayload(filters, missingViews) {
     summary: { horas: 0, registros: 0, personas: 0, proyectos: 0 },
     byPerson: [],
     byTeam: [],
-    filtersData: { projects: [], eventTypes: [] },
+    filtersData: { projects: [], people: [], eventTypes: [] },
   };
 }
 
@@ -86,7 +92,7 @@ export async function GET(request) {
 
     const { where, args } = buildWhere(filters);
 
-    const [summaryRows, byPerson, byTeam, projects, eventTypes] = await Promise.all([
+    const [summaryRows, byPerson, byTeam, projects, people, eventTypes] = await Promise.all([
       queryRows(db, `
         SELECT
           ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas,
@@ -134,6 +140,12 @@ export async function GET(request) {
         ORDER BY proyecto
       `, [filters.from, filters.to]),
       queryRows(db, `
+        SELECT DISTINCT person_id, persona
+        FROM VW_REPORTE_HORAS_DETALLE
+        WHERE fecha >= ? AND fecha <= ? AND person_id IS NOT NULL
+        ORDER BY persona
+      `, [filters.from, filters.to]),
+      queryRows(db, `
         SELECT DISTINCT event_type
         FROM VW_REPORTE_HORAS_DETALLE
         WHERE fecha >= ? AND fecha <= ? AND event_type IS NOT NULL
@@ -150,6 +162,7 @@ export async function GET(request) {
       byTeam,
       filtersData: {
         projects,
+        people,
         eventTypes,
       },
     });
