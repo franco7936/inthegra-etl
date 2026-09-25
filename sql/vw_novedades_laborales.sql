@@ -33,10 +33,15 @@ WITH RECURSIVE eventos AS (
                 OR summary_raw LIKE '%day off%'
                 OR summary_raw LIKE '%day-off%'
                 THEN 'day_off'
-            WHEN event_type_raw IN ('holiday', 'feriado', 'festivo')
+            WHEN event_type_raw IN ('holiday', 'feriado', 'festivo', 'vacation', 'vacations', 'vacacion', 'vacación', 'vacaciones', 'vacation day', 'vacation_day', 'pto', 'paid time off', 'paid_time_off')
                 OR summary_raw LIKE '%holiday%'
                 OR summary_raw LIKE '%feriado%'
                 OR summary_raw LIKE '%festivo%'
+                OR summary_raw LIKE '%vacation%'
+                OR summary_raw LIKE '%vacacion%'
+                OR summary_raw LIKE '%vacación%'
+                OR summary_raw LIKE '%vacaciones%'
+                OR summary_raw LIKE '%pto%'
                 THEN 'holiday'
             WHEN event_type_raw IN ('overtime', 'extra_hours', 'extra hours', 'horas_extra', 'horas extras')
                 OR summary_raw LIKE '%overtime%'
@@ -89,7 +94,7 @@ SELECT
     event_type,
     CASE event_type
         WHEN 'day_off' THEN 'Day off'
-        WHEN 'holiday' THEN 'Holiday'
+        WHEN 'holiday' THEN 'Vacaciones'
         WHEN 'overtime' THEN 'Horas extras'
         ELSE event_type
     END AS event_label,
