@@ -3,17 +3,31 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
-function todayRange() {
-  const now = new Date();
-  const to = now.toISOString().slice(0, 10);
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const from = `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, '0')}-01`;
-  return { from, to };
+function monthRange(monthValue) {
+  const [year, month] = String(monthValue || '').split('-').map(Number);
+  const safeDate = year && month ? new Date(Date.UTC(year, month - 1, 1)) : new Date();
+  const safeYear = safeDate.getUTCFullYear();
+  const safeMonth = safeDate.getUTCMonth() + 1;
+  const monthKey = `${safeYear}-${String(safeMonth).padStart(2, '0')}`;
+  const from = `${monthKey}-01`;
+  const lastDay = new Date(Date.UTC(safeYear, safeMonth, 0)).getUTCDate();
+  const to = `${monthKey}-${String(lastDay).padStart(2, '0')}`;
+  return { month: monthKey, from, to };
 }
 
-function monthTitle(dateValue) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(date);
+function currentMonthRange() {
+  const now = new Date();
+  return monthRange(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+}
+
+function monthTitle(monthValue) {
+  const { from } = monthRange(monthValue);
+  const date = new Date(`${from}T00:00:00Z`);
+  return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+
+function reportFilters(filters) {
+  return { from: filters.from, to: filters.to, projectId: filters.projectId };
 }
 
 function formatHours(value) {
@@ -48,8 +62,8 @@ function ProjectPanel({ project }) {
 }
 
 export default function InversionEstrategicaPage() {
-  const initial = todayRange();
-  const [filters, setFilters] = useState({ from: initial.from, to: initial.to, projectId: '' });
+  const initial = currentMonthRange();
+  const [filters, setFilters] = useState({ month: initial.month, from: initial.from, to: initial.to, projectId: '' });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -57,7 +71,7 @@ export default function InversionEstrategicaPage() {
   async function loadData(nextFilters = filters) {
     setLoading(true);
     setError('');
-    const params = new URLSearchParams(Object.entries(nextFilters).filter(([, value]) => value));
+    const params = new URLSearchParams(Object.entries(reportFilters(nextFilters)).filter(([, value]) => value));
     try {
       const response = await fetch(`/api/reportes/inversion-estrategica?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json();
@@ -78,6 +92,10 @@ export default function InversionEstrategicaPage() {
   const totalHours = useMemo(() => (data?.projects || []).reduce((sum, project) => sum + Number(project.horas || 0), 0), [data]);
   const modelPending = data && data.modelReady === false;
 
+  function handleMonthChange(value) {
+    setFilters({ ...filters, ...monthRange(value) });
+  }
+
   return (
     <main className="shell investmentShell">
       <nav className="topbar investmentTopbar">
@@ -93,7 +111,7 @@ export default function InversionEstrategicaPage() {
 
       <section className="investmentHero">
         <div>
-          <h1>Inversiones Estratégicas · {monthTitle(filters.from)}</h1>
+          <h1>Inversiones Estratégicas · {monthTitle(filters.month)}</h1>
           <p>Horas destinadas agrupadas por proyecto y por épica.</p>
         </div>
         <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
@@ -101,12 +119,8 @@ export default function InversionEstrategicaPage() {
 
       <section className="investmentFilters">
         <label>
-          Desde
-          <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
-        </label>
-        <label>
-          Hasta
-          <input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
+          Mes
+          <input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} />
         </label>
         <label>
           Proyecto
@@ -125,14 +139,8 @@ export default function InversionEstrategicaPage() {
       {data?.demo && <div className="warningBox">Vista previa con datos de referencia del mockup. Los valores reales se activan cuando exista la vista SQL.</div>}
 
       <section className="investmentSummary">
-        <article>
-          <span>Proyectos</span>
-          <strong>{data?.projects?.length || 0}</strong>
-        </article>
-        <article>
-          <span>Horas totales</span>
-          <strong>{formatHours(totalHours)} hrs</strong>
-        </article>
+        <article><span>Proyectos</span><strong>{data?.projects?.length || 0}</strong></article>
+        <article><span>Horas totales</span><strong>{formatHours(totalHours)} hrs</strong></article>
       </section>
 
       {loading ? (
