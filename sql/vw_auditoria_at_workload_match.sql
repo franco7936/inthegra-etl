@@ -49,23 +49,15 @@ WITH esperado AS (
                 LIMIT 1
             )
         ) AS person_id_esperado,
-        COALESCE(
-            (
-                SELECT me.project_id
-                FROM map_equipo_proyecto me
-                WHERE upper(trim(me.project_key_rpt)) = upper(trim(w.project_key_at))
-                  AND COALESCE(me.activo, 1) = 1
-                ORDER BY me.project_id
-                LIMIT 1
-            ),
-            (
-                SELECT me.project_id
-                FROM map_equipo_proyecto me
-                WHERE trim(me.team_id_at) = trim(w.team_id_at)
-                  AND COALESCE(me.activo, 1) = 1
-                ORDER BY me.project_id
-                LIMIT 1
-            )
+        (
+            SELECT me.project_id
+            FROM map_equipo_proyecto me
+            WHERE upper(trim(me.project_key_rpt)) = upper(trim(w.project_key_at))
+              AND me.project_key_rpt IS NOT NULL
+              AND trim(me.project_key_rpt) <> ''
+              AND COALESCE(me.activo, 1) = 1
+            ORDER BY me.project_id
+            LIMIT 1
         ) AS project_id_esperado
     FROM at_workload w
 )
@@ -97,8 +89,7 @@ SELECT
     COALESCE(me_actual.nombre_rpt, me_actual.nombre_at) AS proyecto_actual,
     COALESCE(me_esperado.nombre_rpt, me_esperado.nombre_at) AS proyecto_esperado,
     CASE
-        WHEN (e.project_key_at IS NULL OR trim(e.project_key_at) = '')
-         AND (e.team_id_at IS NULL OR trim(e.team_id_at) = '') THEN 'SIN_FUENTE'
+        WHEN e.project_key_at IS NULL OR trim(e.project_key_at) = '' THEN 'SIN_FUENTE'
         WHEN e.project_id_esperado IS NULL THEN 'SIN_MATCH'
         WHEN e.project_id_actual = e.project_id_esperado THEN 'OK'
         ELSE 'DISTINTO'
