@@ -15,6 +15,105 @@ function formatHours(value) {
   return `${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(Number(value || 0))} hs`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+}
+
+function fileDate(value) {
+  return String(value || '').replace(/[^0-9-]/g, '');
+}
+
+function tableHtml(headers, rows, numericFrom = 0) {
+  return `
+    <table>
+      <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.map((row) => `<tr>${row.map((cell, index) => `<td${index >= numericFrom ? ' class="number"' : ''}>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function downloadExcel({ data, filters, viewMode, rows, filterLabels }) {
+  const filterRows = [
+    ['Desde', filters.from || ''],
+    ['Hasta', filters.to || ''],
+    ['Equipo', filterLabels.project || 'Todos'],
+    ['Tipo', filterLabels.eventType || 'Todos'],
+    ['Vista agrupada', viewMode === 'personas' ? 'Personas' : 'Equipos'],
+  ];
+
+  const summaryRows = [
+    ['Horas registradas', Number(data?.summary?.horas || 0).toFixed(2)],
+    ['Novedades', data?.summary?.registros || 0],
+    ['Personas', data?.summary?.personas || 0],
+    ['Equipos', data?.summary?.equipos || 0],
+  ];
+
+  const typeRows = (data?.byType || []).map((item) => [
+    item.event_label || item.event_type,
+    Number(item.horas || 0).toFixed(2),
+    item.registros || 0,
+  ]);
+
+  const groupedRows = rows.map((item) => viewMode === 'personas'
+    ? [item.persona, item.equipo, Number(item.day_off || 0).toFixed(2), Number(item.holiday || 0).toFixed(2), Number(item.overtime || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]
+    : [item.equipo, Number(item.day_off || 0).toFixed(2), Number(item.holiday || 0).toFixed(2), Number(item.overtime || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]
+  );
+
+  const detailRows = (data?.detail || []).map((row) => [
+    row.fecha,
+    row.persona,
+    row.equipo,
+    row.event_label || row.event_type,
+    Number(row.horas || 0).toFixed(2),
+    row.registros || 0,
+  ]);
+
+  const groupedHeaders = viewMode === 'personas'
+    ? ['Persona', 'Equipo', 'Day off', 'Holiday', 'Horas extras', 'Total horas', 'Novedades']
+    : ['Equipo', 'Day off', 'Holiday', 'Horas extras', 'Total horas', 'Novedades'];
+
+  const html = `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          body { font-family: Arial, sans-serif; }
+          table { border-collapse: collapse; margin-bottom: 18px; }
+          th { background: #ff6a00; color: #ffffff; font-weight: bold; }
+          th, td { border: 1px solid #d9e2ef; padding: 8px; }
+          td.number { mso-number-format: "0.00"; text-align: right; }
+          h1, h2 { color: #0f2043; }
+        </style>
+      </head>
+      <body>
+        <h1>Reporte de novedades laborales</h1>
+        <h2>Filtros</h2>
+        ${tableHtml(['Filtro', 'Valor'], filterRows, 2)}
+        <h2>Resumen</h2>
+        ${tableHtml(['Indicador', 'Valor'], summaryRows, 1)}
+        <h2>Distribucion por tipo</h2>
+        ${tableHtml(['Tipo', 'Horas', 'Novedades'], typeRows, 1)}
+        <h2>${viewMode === 'personas' ? 'Agrupado por persona' : 'Agrupado por equipo'}</h2>
+        ${tableHtml(groupedHeaders, groupedRows, viewMode === 'personas' ? 2 : 1)}
+        <h2>Detalle</h2>
+        ${tableHtml(['Fecha', 'Persona', 'Equipo', 'Tipo', 'Horas', 'Novedades'], detailRows, 4)}
+      </body>
+    </html>
+  `;
+
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `novedades-laborales-${fileDate(filters.from)}-${fileDate(filters.to)}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function TypeBadge({ type, label }) {
   return <span className={`laborBadge type-${type}`}>{label || type}</span>;
 }
@@ -57,6 +156,22 @@ export default function NovedadesLaboralesPage() {
   const maxTypeHours = useMemo(() => Math.max(...(data?.byType || []).map((item) => Number(item.horas || 0)), 0), [data]);
   const rows = viewMode === 'personas' ? data?.byPerson || [] : data?.byTeam || [];
   const maxRowHours = useMemo(() => Math.max(...rows.map((item) => Number(item.horas || 0)), 0), [rows]);
+  const selectedProject = (data?.filtersData?.projects || []).find((project) => String(project.project_id) === String(filters.projectId));
+  const selectedEventType = (data?.filtersData?.eventTypes || []).find((type) => String(type.event_type) === String(filters.eventType));
+  const canExport = !loading && !error && Boolean(data) && ((data?.detail || []).length > 0 || rows.length > 0);
+
+  function handleExport() {
+    downloadExcel({
+      data,
+      filters,
+      viewMode,
+      rows,
+      filterLabels: {
+        project: selectedProject?.equipo || '',
+        eventType: selectedEventType?.label || '',
+      },
+    });
+  }
 
   return (
     <main className="shell laborShell">
@@ -80,7 +195,7 @@ export default function NovedadesLaboralesPage() {
         <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
       </section>
 
-      <section className="qualityFilters laborFilters">
+      <section className="qualityFilters laborFilters laborFiltersExport">
         <label>
           Desde
           <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
@@ -108,6 +223,7 @@ export default function NovedadesLaboralesPage() {
           </select>
         </label>
         <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
+        <button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button>
       </section>
 
       {error && <div className="errorBox">{error}</div>}
