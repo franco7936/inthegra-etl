@@ -47,6 +47,11 @@ El texto del estimado muestra el mes seleccionado, la cantidad de personas consi
 
 En la vista `Personas`, la grilla agrupa por persona y muestra una fila por cada proyecto donde esa persona tuvo horas.
 
+Debajo del nombre de cada persona se muestra:
+
+- Ultima fecha de carga de horas dentro del mes filtrado.
+- Total de horas cargadas por esa persona.
+
 Para cada persona se calcula:
 
 ```text
@@ -68,7 +73,7 @@ La pantalla incluye el boton `Exportar Excel`.
 
 La exportacion toma exactamente la vista filtrada que esta viendo el usuario:
 
-- Si esta seleccionada la vista `Personas`, exporta la matriz por persona/proyecto/tipo de actividad e incluye total por persona, estimado por persona, porcentaje de cumplimiento y estado.
+- Si esta seleccionada la vista `Personas`, exporta la matriz por persona/proyecto/tipo de actividad e incluye ultima fecha de carga, total por persona, estimado por persona, porcentaje de cumplimiento y estado.
 - Si esta seleccionada la vista `Proyectos`, exporta la matriz por proyecto/tipo de actividad.
 - El archivo incluye el mes aplicado, el rango `from/to`, los dias habiles y el total estimado de horas.
 
