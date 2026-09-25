@@ -124,10 +124,10 @@ export async function GET(request) {
           proyecto,
           project_key_rpt,
           event_type,
-          ROUND(SUM(COALESCE(horas, 0)), 2) AS horas,
-          SUM(COALESCE(personas, 0)) AS personas,
-          SUM(COALESCE(registros, 0)) AS registros
-        FROM VW_REPORTE_HORAS_EQUIPO_TIPO
+          ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas,
+          COUNT(DISTINCT person_id) AS personas,
+          COUNT(*) AS registros
+        FROM VW_REPORTE_HORAS_DETALLE
         WHERE ${where}
         GROUP BY project_id, proyecto, project_key_rpt, event_type
         ORDER BY horas DESC
