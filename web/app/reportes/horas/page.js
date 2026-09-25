@@ -184,7 +184,7 @@ function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, e
 
   const html = `
     <html><head><meta charset="UTF-8" /><style>table{border-collapse:collapse;font-family:Arial,sans-serif}th{background:#ff6a00;color:#fff;font-weight:bold}th,td{border:1px solid #d9e2ef;padding:8px}td.number{mso-number-format:"0.00";text-align:right}</style></head>
-      <body><h1>Reporte de horas</h1><table><tbody>${filterRows.map((row) => `<tr><td><strong>${escapeHtml(row[0])}</strong></td><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table><br />
+      <body><h1>Reporte de horas SaaS</h1><table><tbody>${filterRows.map((row) => `<tr><td><strong>${escapeHtml(row[0])}</strong></td><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table><br />
         <table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${bodyRows.map((row) => `<tr>${row.map((cell, index) => `<td${index >= (mode === 'persona' ? 3 : 1) ? ' class="number"' : ''}>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
       </body></html>`;
 
@@ -295,7 +295,7 @@ export default function ReporteHorasPage() {
   return (
     <main className="shell reportShell">
       <nav className="topbar"><Link className="brand" href="/"><img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" /><span><strong>Inthegra Reports</strong><small>Reporte dinamico</small></span></Link><Link className="navLink" href="/">Inicio</Link></nav>
-      <section className="pageHeader"><div><p className="eyebrow">ActivityTimeline</p><h1>Reporte de horas</h1><p>Horas por persona y por proyecto, agrupadas por tipo de actividad.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section>
+      <section className="pageHeader"><div><p className="eyebrow">ActivityTimeline</p><h1>Reporte de horas SaaS</h1><p>Horas por persona y por proyecto, agrupadas por tipo de actividad.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section>
       <section className="filtersPanel hoursFiltersPanel">
         <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
         <label>Proyecto<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label>
