@@ -131,15 +131,15 @@ function getPersonRowSpans(matrix) {
 }
 
 function complianceClass(percent) {
-  if (percent >= 98) return 'ok';
-  if (percent >= 85) return 'warning';
+  if (percent >= 100) return 'ok';
+  if (percent >= 80) return 'warning';
   return 'danger';
 }
 
 function complianceText(percent) {
-  if (percent >= 98) return 'Cumple';
-  if (percent >= 85) return 'Cerca';
-  return 'Revisar';
+  if (percent >= 100) return 'OK';
+  if (percent >= 80) return 'Revisar';
+  return 'Alerta';
 }
 
 function escapeHtml(value) {
