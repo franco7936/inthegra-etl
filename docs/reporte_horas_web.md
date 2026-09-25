@@ -61,9 +61,11 @@ cumplimiento = total horas cargadas por persona / horas esperadas
 
 Estados visuales:
 
-- `Cumple`: desde 98% del estimado.
-- `Cerca`: desde 85% y menor a 98%.
-- `Revisar`: menor a 85%.
+- `Alerta` / rojo: menor a 80% del estimado.
+- `Revisar` / naranja: desde 80% y menor a 100%.
+- `OK` / verde: igual o mayor a 100%.
+
+La franja izquierda de cada persona usa el mismo color del estado.
 
 Esto sirve para detectar rapidamente si faltan horas de carga por persona en el mes revisado.
 
