@@ -5,7 +5,8 @@ Importa etl_runner para conservar las protecciones actuales y agrega:
 - columnas fuente adicionales en at_workload: user_real_name_at y user_email_at;
 - columna email_at en map_personas;
 - match de person_id por username, email o nombre real;
-- extraccion de bookings desde timeline manteniendo la persona del member.
+- extraccion de bookings desde timeline manteniendo la persona del member;
+- bloqueo de filas at_workload sin person_id.
 """
 
 import os
@@ -207,6 +208,28 @@ def _item_identity(item):
     }
 
 
+def _log_missing_identity(source, team_name, item):
+    etl.log.warning(
+        "AT %s omitido sin persona | team=%s issue=%s type=%s summary=%s keys=%s",
+        source,
+        team_name,
+        item.get("issueKey", ""),
+        item.get("issueType", item.get("recordType", "")),
+        (item.get("summary") or item.get("comment") or "")[:120],
+        ",".join(sorted(item.keys()))[:500],
+    )
+
+
+def _append_row(rows, row, counters, source, team_name, item):
+    if not row.get("person_id"):
+        counters["sin_persona"] += 1
+        counters["omitidos"] += 1
+        _log_missing_identity(source, team_name, item)
+        return False
+    rows.append(row)
+    return True
+
+
 def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
     if not at:
         return
@@ -219,7 +242,7 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
     project_by_team = etl_runner.mapa_project_por_team_seguro(conn)
     project_by_key = etl_runner.mapa_project_por_key_seguro(conn)
     rows = []
-    sin_persona = 0
+    counters = {"sin_persona": 0, "omitidos": 0}
 
     max_pages_per_team = int(os.getenv("AT_WORKLOG_MAX_PAGES_PER_TEAM", "25"))
     max_rows_per_team = int(os.getenv("AT_WORKLOG_MAX_ROWS_PER_TEAM", "10000"))
@@ -234,10 +257,9 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
             for member in data.get("members", []) if isinstance(data, dict) else []:
                 identity = _member_identity(member)
                 person_id = person_id_for(person_maps, **identity)
-                if not person_id:
-                    sin_persona += len(member.get("issues", []) or [])
+                if not person_id and (member.get("issues") or []):
                     etl.log.warning(
-                        "AT timeline sin match persona: username=%s real_name=%s email=%s team=%s",
+                        "AT timeline member sin match persona: username=%s real_name=%s email=%s team=%s",
                         identity["username"], identity["real_name"], identity["email"], team_name,
                     )
                 for item in member.get("issues", []) or []:
@@ -246,7 +268,7 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
                     if tiempo is None:
                         tiempo = item.get("originalTimeEstimate")
                     project_key = etl_runner._project_key_from_item(item)
-                    rows.append({
+                    _append_row(rows, {
                         "person_id": person_id,
                         "project_id": etl_runner._project_id_for(project_by_key, project_by_team, project_key, team_id),
                         "username_at": identity["username"],
@@ -263,7 +285,7 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
                         "rem_estimate": etl.seg_a_hs(item.get("remainingTimeEstimate")),
                         "tiempo_empleado": etl.seg_a_hs(tiempo),
                         "fecha_carga": now,
-                    })
+                    }, counters, "timeline", team_name, item)
             time.sleep(0.2)
         except Exception as exc:
             etl.log.warning("Timeline equipo %s: %s", team_name, exc)
@@ -306,14 +328,11 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
 
                     identity = _item_identity(item)
                     person_id = person_id_for(person_maps, **identity)
-                    if not person_id:
-                        sin_persona += 1
-
                     issue_key = item.get("issueKey", "")
                     project_key = etl_runner._project_key_from_item(item)
                     is_worklog = bool(item.get("worklogId"))
                     event_type = "WORKLOG" if is_worklog else item.get("issueType", "CALENDAR_EVENT")
-                    rows.append({
+                    _append_row(rows, {
                         "person_id": person_id,
                         "project_id": etl_runner._project_id_for(project_by_key, project_by_team, project_key, team_id),
                         "username_at": identity["username"],
@@ -330,7 +349,7 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
                         "rem_estimate": etl.seg_a_hs(item.get("remainingTimeEstimate")),
                         "tiempo_empleado": etl.seg_a_hs(item.get("timeSpent") if is_worklog else item.get("dailyTimeEstimate") or item.get("originalTimeEstimate")),
                         "fecha_carga": now,
-                    })
+                    }, counters, "worklog/list", team_name, item)
 
                 if nuevos_en_pagina == 0:
                     etl.log.warning("Worklog/list equipo %s no trajo registros nuevos en offset=%s; se corta", team_name, offset)
@@ -352,8 +371,27 @@ def extraer_at_workload_v2(at, conn, equipos, modo, full=False):
 
     conn.execute("DELETE FROM at_workload WHERE planned_start >= ? AND planned_start <= ?", (start, end))
     conn.commit()
-    etl.log_etl(conn, modo, "at_workload", etl.upsert(conn, "at_workload", rows), detalle=f"{start} a {end}; sin_persona={sin_persona}")
+    detalle = f"{start} a {end}; sin_persona={counters['sin_persona']}; omitidos={counters['omitidos']}"
+    etl.log_etl(conn, modo, "at_workload", etl.upsert(conn, "at_workload", rows), detalle=detalle)
+    limpiar_at_workload_sin_persona(conn, start, end)
     rematchear_at_workload_ids_v2(conn)
+
+
+def limpiar_at_workload_sin_persona(conn, start=None, end=None):
+    if start and end:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM at_workload WHERE person_id IS NULL AND planned_start >= ? AND planned_start <= ?",
+            (start, end),
+        ).fetchone()
+        count = int(row[0] or 0) if row else 0
+        conn.execute("DELETE FROM at_workload WHERE person_id IS NULL AND planned_start >= ? AND planned_start <= ?", (start, end))
+    else:
+        row = conn.execute("SELECT COUNT(*) FROM at_workload WHERE person_id IS NULL").fetchone()
+        count = int(row[0] or 0) if row else 0
+        conn.execute("DELETE FROM at_workload WHERE person_id IS NULL")
+    conn.commit()
+    if count:
+        etl.log.warning("at_workload: %s filas sin person_id eliminadas", count)
 
 
 def rematchear_at_workload_ids_v2(conn):
@@ -423,6 +461,7 @@ def rematchear_at_workload_ids_v2(conn):
            OR (team_id_at IS NOT NULL AND trim(team_id_at) <> '')
     """)
     conn.commit()
+    limpiar_at_workload_sin_persona(conn)
 
 
 _original_refrescar_vistas = etl.refrescar_vistas
