@@ -128,6 +128,7 @@ export default function NovedadesLaboralesPage() {
   const selectedProject = (data?.filtersData?.projects || []).find((project) => String(project.project_id) === String(filters.projectId));
   const selectedEventType = (data?.filtersData?.eventTypes || []).find((type) => String(type.event_type) === String(filters.eventType));
   const canExport = !loading && !error && Boolean(data) && ((data?.detail || []).length > 0 || rows.length > 0);
+  const hasReportRows = Boolean(data) && ((data?.detail || []).length > 0 || (data?.byType || []).length > 0 || rows.length > 0);
 
   function handleMonthChange(value) {
     setFilters({ ...filters, ...monthRange(value) });
@@ -143,12 +144,13 @@ export default function NovedadesLaboralesPage() {
       <section className="qualityHeader laborHeader"><div><p className="eyebrow">ActivityTimeline</p><h1>Reporte de novedades laborales</h1><p>Seguimiento de day off, vacaciones y horas extras por persona y por equipo dentro del mes seleccionado.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section>
       <section className="filtersPanel">
         <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
-        <label>Equipo<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.equipo}</option>)}</select></label>
-        <label>Tipo<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.eventTypes || []).map((type) => <option key={type.event_type} value={type.event_type}>{type.label}</option>)}</select></label>
+        <label>Equipo<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos los equipos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.equipo}</option>)}</select></label>
+        <label>Tipo<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todos los tipos</option>{(data?.filtersData?.eventTypes || []).map((type) => <option key={type.event_type} value={type.event_type}>{type.label}</option>)}</select></label>
         <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
         <button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button>
       </section>
       {error && <div className="errorBox">{error}</div>}{modelPending && <div className="errorBox">{data.setupMessage}</div>}{data?.demo && <div className="warningBox">Vista previa con datos de referencia. Los valores reales se activan cuando exista la vista SQL.</div>}
+      {!loading && !error && !modelPending && !hasReportRows && <section className="laborPlaceholder"><strong>Sin novedades para mostrar</strong><span>No encontramos day off, vacaciones u horas extras para {monthTitle(filters.month)} con los filtros aplicados.</span></section>}
       <section className="laborOverview"><article><span>Horas registradas</span><strong>{formatHours(data?.summary?.horas)}</strong></article><article><span>Novedades</span><strong>{data?.summary?.registros || 0}</strong></article><article><span>Personas</span><strong>{data?.summary?.personas || 0}</strong></article><article><span>Equipos</span><strong>{data?.summary?.equipos || 0}</strong></article></section>
       <section className="laborCharts">
         <article className="laborPanel"><div className="panelHeader"><div><h2>Distribucion por tipo</h2><p>{monthTitle(filters.month)}</p></div></div><div className="laborTypeList">{(data?.byType || []).map((item) => <div className="laborTypeRow" key={item.event_type}><TypeBadge type={item.event_type} label={item.event_label} /><MiniBar value={item.horas} max={maxTypeHours} /><strong>{formatHours(item.horas)}</strong></div>)}{!loading && !(data?.byType || []).length && <div className="emptyState">Sin novedades para el mes.</div>}</div></article>
