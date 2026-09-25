@@ -70,7 +70,7 @@ function downloadExcel({ data, filters, viewMode, rows, filterLabels }) {
     : [item.equipo, Number(item.day_off || 0).toFixed(2), Number(item.holiday || 0).toFixed(2), Number(item.overtime || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]
   );
   const detailRows = (data?.detail || []).map((row) => [row.fecha, row.persona, row.equipo, row.event_label || row.event_type, Number(row.horas || 0).toFixed(2), row.registros || 0]);
-  const groupedHeaders = viewMode === 'personas' ? ['Persona', 'Equipo', 'Day off', 'Holiday', 'Horas extras', 'Total horas', 'Novedades'] : ['Equipo', 'Day off', 'Holiday', 'Horas extras', 'Total horas', 'Novedades'];
+  const groupedHeaders = viewMode === 'personas' ? ['Persona', 'Equipo', 'Day off', 'Vacaciones', 'Horas extras', 'Total horas', 'Novedades'] : ['Equipo', 'Day off', 'Vacaciones', 'Horas extras', 'Total horas', 'Novedades'];
 
   const html = `<html><head><meta charset="UTF-8" /><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:18px}th{background:#ff6a00;color:#fff;font-weight:bold}th,td{border:1px solid #d9e2ef;padding:8px}td.number{mso-number-format:"0.00";text-align:right}h1,h2{color:#0f2043}</style></head><body><h1>Reporte de novedades laborales</h1><h2>Filtros</h2>${tableHtml(['Filtro','Valor'], filterRows, 2)}<h2>Resumen</h2>${tableHtml(['Indicador','Valor'], summaryRows, 1)}<h2>Distribucion por tipo</h2>${tableHtml(['Tipo','Horas','Novedades'], typeRows, 1)}<h2>${viewMode === 'personas' ? 'Agrupado por persona' : 'Agrupado por equipo'}</h2>${tableHtml(groupedHeaders, groupedRows, viewMode === 'personas' ? 2 : 1)}<h2>Detalle</h2>${tableHtml(['Fecha','Persona','Equipo','Tipo','Horas','Novedades'], detailRows, 4)}</body></html>`;
 
@@ -140,8 +140,8 @@ export default function NovedadesLaboralesPage() {
   return (
     <main className="shell laborShell">
       <nav className="topbar"><Link className="brand" href="/"><img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" /><span><strong>Inthegra Reports</strong><small>Novedades laborales</small></span></Link><Link className="navLink" href="/">Inicio</Link></nav>
-      <section className="qualityHeader laborHeader"><div><p className="eyebrow">ActivityTimeline</p><h1>Reporte de novedades laborales</h1><p>Seguimiento de day off, feriados y horas extras por persona y por equipo dentro del mes seleccionado.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section>
-      <section className="qualityFilters laborFilters laborFiltersExport">
+      <section className="qualityHeader laborHeader"><div><p className="eyebrow">ActivityTimeline</p><h1>Reporte de novedades laborales</h1><p>Seguimiento de day off, vacaciones y horas extras por persona y por equipo dentro del mes seleccionado.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section>
+      <section className="filtersPanel">
         <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
         <label>Equipo<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.equipo}</option>)}</select></label>
         <label>Tipo<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.eventTypes || []).map((type) => <option key={type.event_type} value={type.event_type}>{type.label}</option>)}</select></label>
