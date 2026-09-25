@@ -37,13 +37,87 @@ function buildMatrix(rows, keyFields) {
   return [...map.values()].sort((a, b) => b.total - a.total);
 }
 
+function getMatrixData(rows, mode) {
+  const eventTypesMap = new Map();
+  rows.forEach((row) => {
+    const type = row.event_type || 'Sin tipo';
+    eventTypesMap.set(type, (eventTypesMap.get(type) || 0) + Number(row.horas || 0));
+  });
+  const eventTypes = [...eventTypesMap.entries()].sort((a, b) => b[1] - a[1]).map(([type]) => type);
+  const matrix = buildMatrix(rows, mode === 'persona' ? ['persona', 'proyecto'] : ['proyecto']);
+  return { eventTypes, matrix };
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+}
+
+function fileDate(value) {
+  return String(value || '').replace(/[^0-9-]/g, '');
+}
+
+function downloadExcel({ rows, mode, filters, filterLabels }) {
+  const { eventTypes, matrix } = getMatrixData(rows, mode);
+  const headers = [mode === 'persona' ? 'Persona' : null, 'Proyecto', ...eventTypes.map(labelType), 'Total horas', 'Registros'].filter(Boolean);
+  const bodyRows = matrix.map((row) => [
+    ...(mode === 'persona' ? [row.persona] : []),
+    row.proyecto,
+    ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)),
+    Number(row.total || 0).toFixed(2),
+    Number(row.registros || 0).toFixed(0),
+  ]);
+
+  const filterRows = [
+    ['Desde', filters.from || ''],
+    ['Hasta', filters.to || ''],
+    ['Proyecto', filterLabels.project || 'Todos'],
+    ['Persona', filterLabels.person || 'Todas'],
+    ['Actividad', filterLabels.eventType || 'Todas'],
+    ['Vista', mode === 'persona' ? 'Personas' : 'Proyectos'],
+  ];
+
+  const html = `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          table { border-collapse: collapse; font-family: Arial, sans-serif; }
+          th { background: #ff6a00; color: #ffffff; font-weight: bold; }
+          th, td { border: 1px solid #d9e2ef; padding: 8px; }
+          td.number { mso-number-format: "0.00"; text-align: right; }
+        </style>
+      </head>
+      <body>
+        <h1>Reporte de horas</h1>
+        <table>
+          <tbody>
+            ${filterRows.map((row) => `<tr><td><strong>${escapeHtml(row[0])}</strong></td><td>${escapeHtml(row[1])}</td></tr>`).join('')}
+          </tbody>
+        </table>
+        <br />
+        <table>
+          <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${bodyRows.map((row) => `<tr>${row.map((cell, index) => `<td${index >= (mode === 'persona' ? 2 : 1) ? ' class="number"' : ''}>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `reporte-horas-${fileDate(filters.from)}-${fileDate(filters.to)}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function MatrixTable({ rows, mode }) {
-  const eventTypes = useMemo(() => {
-    const totals = new Map();
-    rows.forEach((row) => totals.set(row.event_type || 'Sin tipo', (totals.get(row.event_type || 'Sin tipo') || 0) + Number(row.horas || 0)));
-    return [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([type]) => type);
-  }, [rows]);
-  const matrix = useMemo(() => buildMatrix(rows, mode === 'persona' ? ['persona', 'proyecto'] : ['proyecto']), [rows, mode]);
+  const { eventTypes, matrix } = useMemo(() => getMatrixData(rows, mode), [rows, mode]);
 
   if (!matrix.length) {
     return <div className="emptyState">No hay datos para los filtros seleccionados.</div>;
@@ -79,7 +153,7 @@ function MatrixTable({ rows, mode }) {
 
 export default function ReporteHorasPage() {
   const initial = todayRange();
-  const [filters, setFilters] = useState({ from: initial.from, to: initial.to, projectId: '', eventType: '' });
+  const [filters, setFilters] = useState({ from: initial.from, to: initial.to, projectId: '', personId: '', eventType: '' });
   const [data, setData] = useState(null);
   const [view, setView] = useState('persona');
   const [loading, setLoading] = useState(true);
@@ -108,6 +182,22 @@ export default function ReporteHorasPage() {
 
   const rows = view === 'persona' ? data?.byPerson || [] : data?.byTeam || [];
   const modelPending = data && data.modelReady === false;
+  const selectedProject = (data?.filtersData?.projects || []).find((project) => String(project.project_id) === String(filters.projectId));
+  const selectedPerson = (data?.filtersData?.people || []).find((person) => String(person.person_id) === String(filters.personId));
+  const canExport = !loading && !error && rows.length > 0;
+
+  function handleExport() {
+    downloadExcel({
+      rows,
+      mode: view,
+      filters,
+      filterLabels: {
+        project: selectedProject?.proyecto || selectedProject?.project_key_rpt || '',
+        person: selectedPerson?.persona || '',
+        eventType: filters.eventType ? labelType(filters.eventType) : '',
+      },
+    });
+  }
 
   return (
     <main className="shell reportShell">
@@ -133,7 +223,7 @@ export default function ReporteHorasPage() {
         </span>
       </section>
 
-      <section className="filtersPanel">
+      <section className="filtersPanel hoursFiltersPanel">
         <label>
           Desde
           <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
@@ -148,6 +238,15 @@ export default function ReporteHorasPage() {
             <option value="">Todos</option>
             {(data?.filtersData?.projects || []).map((project) => (
               <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Persona
+          <select value={filters.personId} onChange={(event) => setFilters({ ...filters, personId: event.target.value })}>
+            <option value="">Todas</option>
+            {(data?.filtersData?.people || []).map((person) => (
+              <option key={person.person_id} value={person.person_id}>{person.persona}</option>
             ))}
           </select>
         </label>
@@ -179,9 +278,12 @@ export default function ReporteHorasPage() {
             <h2>Distribucion por tipo de actividad</h2>
             <p>{filters.from} a {filters.to}</p>
           </div>
-          <div className="segmented">
-            <button className={view === 'persona' ? 'active' : ''} onClick={() => setView('persona')}>Personas</button>
-            <button className={view === 'equipo' ? 'active' : ''} onClick={() => setView('equipo')}>Proyectos</button>
+          <div className="panelActions">
+            <div className="segmented">
+              <button className={view === 'persona' ? 'active' : ''} onClick={() => setView('persona')}>Personas</button>
+              <button className={view === 'equipo' ? 'active' : ''} onClick={() => setView('equipo')}>Proyectos</button>
+            </div>
+            <button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button>
           </div>
         </div>
         {loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} />}
