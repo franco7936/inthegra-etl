@@ -123,8 +123,8 @@ jobs:
             ARGS="$ARGS --sin-worklogs"
           fi
 
-          echo "Corriendo: python etl_runner_v2.py $ARGS"
-          python etl_runner_v2.py $ARGS
+          echo "Corriendo: python etl_runner_v3.py $ARGS"
+          python etl_runner_v3.py $ARGS
 
       - name: Limpiar datos anteriores a fecha solicitada
         if: ${{ success() && github.event.inputs.limpiar_antes_de != '' }}
