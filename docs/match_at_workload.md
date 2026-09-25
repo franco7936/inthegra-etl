@@ -10,8 +10,84 @@ Reglas duras:
 - `at_workload` no debe conservar filas con `person_id IS NULL`.
 - `at_workload` no debe conservar filas sin `project_id` valido.
 - `project_id` debe corresponder a una fila activa de `map_equipo_proyecto` con `project_key_rpt` informado.
+- `at_workload` no debe conservar actividades duplicadas.
 
 Si ActivityTimeline entrega un registro sin identidad de persona o sin proyecto Jira confiable, el ETL lo omite y lo informa en logs.
+
+## Deduplicacion
+
+El workflow ejecuta `etl_runner_v3.py`, que agrega una capa de deduplicacion sobre `at_workload`.
+
+La tabla incorpora la columna:
+
+| Columna | Uso |
+| --- | --- |
+| `dedupe_key` | Huella SHA-256 que identifica una actividad unica de ActivityTimeline. |
+
+La clave se calcula con estos campos normalizados:
+
+```text
+person_id
+project_id
+issue_key
+event_type
+summary
+planned_start
+planned_end
+tiempo_empleado
+```
+
+Reglas aplicadas por el ETL:
+
+1. Si la columna `dedupe_key` no existe, la crea.
+2. Completa `dedupe_key` en registros historicos que no la tengan.
+3. Elimina duplicados historicos dejando el menor `workload_id`.
+4. Crea el indice unico `idx_at_workload_dedupe_key`.
+5. Antes de insertar nuevos registros, calcula `dedupe_key` y omite duplicados dentro de la misma corrida.
+
+Esto protege contra duplicados entre corridas y tambien contra casos donde la misma actividad llegue repetida desde la API.
+
+Consulta de validacion:
+
+```sql
+SELECT dedupe_key, COUNT(*) AS cantidad
+FROM at_workload
+WHERE dedupe_key IS NOT NULL
+  AND TRIM(dedupe_key) <> ''
+GROUP BY dedupe_key
+HAVING COUNT(*) > 1;
+```
+
+Debe devolver `0` filas.
+
+Consulta para revisar duplicados funcionales sin depender de `dedupe_key`:
+
+```sql
+SELECT
+  person_id,
+  project_id,
+  issue_key,
+  event_type,
+  summary,
+  planned_start,
+  planned_end,
+  tiempo_empleado,
+  COUNT(*) AS cantidad
+FROM at_workload
+GROUP BY
+  person_id,
+  project_id,
+  issue_key,
+  event_type,
+  summary,
+  planned_start,
+  planned_end,
+  tiempo_empleado
+HAVING COUNT(*) > 1
+ORDER BY cantidad DESC;
+```
+
+Tambien debe devolver `0` filas.
 
 ## Claves fuente guardadas
 
