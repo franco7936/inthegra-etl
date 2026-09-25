@@ -62,6 +62,12 @@ function formatPercent(value) {
   return `${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(value))}%`;
 }
 
+function formatDateDisplay(value) {
+  const date = parseDate(String(value || '').slice(0, 10));
+  if (!date) return 'Sin carga';
+  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+
 function labelType(value) {
   return String(value || 'Sin tipo').replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
 }
@@ -70,15 +76,17 @@ function buildMatrix(rows, keyFields) {
   const map = new Map();
   rows.forEach((row) => {
     const key = keyFields.map((field) => row[field] || '').join('||');
-    const current = map.get(key) || { total: 0, registros: 0, byType: {} };
+    const current = map.get(key) || { total: 0, registros: 0, byType: {}, latestDate: '' };
     keyFields.forEach((field) => {
       current[field] = row[field] || 'Sin dato';
     });
     const type = row.event_type || 'Sin tipo';
     const hours = Number(row.horas || 0);
+    const latestDate = String(row.ultima_fecha || row.fecha || '').slice(0, 10);
     current.byType[type] = (current.byType[type] || 0) + hours;
     current.total += hours;
     current.registros += Number(row.registros || 0);
+    if (latestDate && latestDate > current.latestDate) current.latestDate = latestDate;
     map.set(key, current);
   });
   return [...map.values()].sort((a, b) => b.total - a.total);
@@ -102,6 +110,15 @@ function getPersonTotals(matrix) {
     totals.set(row.persona, (totals.get(row.persona) || 0) + Number(row.total || 0));
   });
   return totals;
+}
+
+function getPersonLatestDates(matrix) {
+  const latest = new Map();
+  matrix.forEach((row) => {
+    if (!row.persona || !row.latestDate) return;
+    if (!latest.get(row.persona) || row.latestDate > latest.get(row.persona)) latest.set(row.persona, row.latestDate);
+  });
+  return latest;
 }
 
 function getPersonRowSpans(matrix) {
@@ -140,14 +157,15 @@ function reportFilters(filters) {
 function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, expectedTotal, businessDays, period }) {
   const { eventTypes, matrix } = getMatrixData(rows, mode);
   const personTotals = getPersonTotals(matrix);
+  const personLatestDates = getPersonLatestDates(matrix);
   const headers = mode === 'persona'
-    ? ['Persona', 'Proyecto', ...eventTypes.map(labelType), 'Total fila', 'Total persona', 'Estimado persona', 'Cumplimiento %', 'Estado', 'Registros']
+    ? ['Persona', 'Ultima carga', 'Proyecto', ...eventTypes.map(labelType), 'Total fila', 'Total persona', 'Estimado persona', 'Cumplimiento %', 'Estado', 'Registros']
     : ['Proyecto', ...eventTypes.map(labelType), 'Total horas', 'Registros'];
   const bodyRows = matrix.map((row) => {
     if (mode === 'persona') {
       const personTotal = Number(personTotals.get(row.persona) || 0);
       const percent = expectedPerPerson > 0 ? (personTotal / expectedPerPerson) * 100 : 0;
-      return [row.persona, row.proyecto, ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)), Number(row.total || 0).toFixed(2), personTotal.toFixed(2), Number(expectedPerPerson || 0).toFixed(2), percent.toFixed(0), complianceText(percent), Number(row.registros || 0).toFixed(0)];
+      return [row.persona, formatDateDisplay(personLatestDates.get(row.persona)), row.proyecto, ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)), Number(row.total || 0).toFixed(2), personTotal.toFixed(2), Number(expectedPerPerson || 0).toFixed(2), percent.toFixed(0), complianceText(percent), Number(row.registros || 0).toFixed(0)];
     }
     return [row.proyecto, ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)), Number(row.total || 0).toFixed(2), Number(row.registros || 0).toFixed(0)];
   });
@@ -167,7 +185,7 @@ function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, e
   const html = `
     <html><head><meta charset="UTF-8" /><style>table{border-collapse:collapse;font-family:Arial,sans-serif}th{background:#ff6a00;color:#fff;font-weight:bold}th,td{border:1px solid #d9e2ef;padding:8px}td.number{mso-number-format:"0.00";text-align:right}</style></head>
       <body><h1>Reporte de horas</h1><table><tbody>${filterRows.map((row) => `<tr><td><strong>${escapeHtml(row[0])}</strong></td><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table><br />
-        <table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${bodyRows.map((row) => `<tr>${row.map((cell, index) => `<td${index >= (mode === 'persona' ? 2 : 1) ? ' class="number"' : ''}>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+        <table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${bodyRows.map((row) => `<tr>${row.map((cell, index) => `<td${index >= (mode === 'persona' ? 3 : 1) ? ' class="number"' : ''}>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
       </body></html>`;
 
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
@@ -184,6 +202,7 @@ function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, e
 function MatrixTable({ rows, mode, expectedPerPerson }) {
   const { eventTypes, matrix } = useMemo(() => getMatrixData(rows, mode), [rows, mode]);
   const personTotals = useMemo(() => getPersonTotals(matrix), [matrix]);
+  const personLatestDates = useMemo(() => getPersonLatestDates(matrix), [matrix]);
   const personRowSpans = useMemo(() => getPersonRowSpans(matrix), [matrix]);
   const visibleMatrix = useMemo(() => {
     if (mode !== 'persona') return matrix;
@@ -206,11 +225,12 @@ function MatrixTable({ rows, mode, expectedPerPerson }) {
             const isFirstPersonRow = mode === 'persona' && !renderedPeople.has(row.persona);
             if (isFirstPersonRow) renderedPeople.add(row.persona);
             const personTotal = Number(personTotals.get(row.persona) || 0);
+            const latestDate = personLatestDates.get(row.persona);
             const percent = expectedPerPerson > 0 ? (personTotal / expectedPerPerson) * 100 : 0;
             const status = complianceClass(percent);
             return (
               <tr key={`${row.persona || ''}-${row.proyecto}`} className={mode === 'persona' ? `personStatus-${status}` : ''}>
-                {mode === 'persona' && isFirstPersonRow && <td className="personGroupCell" rowSpan={personRowSpans.get(row.persona)}><strong>{row.persona}</strong><small>{formatHours(personTotal)} hs cargadas</small></td>}
+                {mode === 'persona' && isFirstPersonRow && <td className="personGroupCell" rowSpan={personRowSpans.get(row.persona)}><strong>{row.persona}</strong><small>Ultima carga: {formatDateDisplay(latestDate)}</small><small>{formatHours(personTotal)} hs cargadas</small></td>}
                 <td>{row.proyecto}</td>
                 {eventTypes.map((type) => <td className="number" key={type}>{formatHours(row.byType[type])}</td>)}
                 <td className="number"><strong>{formatHours(row.total)}</strong></td>
@@ -290,7 +310,7 @@ export default function ReporteHorasPage() {
         <article><span>Personas</span><strong>{formatHours(data?.summary?.personas)}</strong></article><article><span>Proyectos</span><strong>{formatHours(data?.summary?.proyectos)}</strong></article><article><span>Registros</span><strong>{formatHours(data?.summary?.registros)}</strong></article>
       </section>
       <section className="reportPanel"><div className="panelHeader"><div><h2>Distribucion por tipo de actividad</h2><p>{selectedPeriod}</p></div><div className="panelActions"><div className="segmented"><button className={view === 'persona' ? 'active' : ''} onClick={() => setView('persona')}>Personas</button><button className={view === 'equipo' ? 'active' : ''} onClick={() => setView('equipo')}>Proyectos</button></div><button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button></div></div>{loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} expectedPerPerson={expectedPerPerson} />}</section>
-      <style jsx global>{`.hoursKpiGrid{grid-template-columns:repeat(5,minmax(0,1fr))}.hoursKpiGrid article small{display:block;margin-top:8px;color:var(--muted);line-height:1.4}.estimatedHoursCard{border-color:#ffb074;background:#fff7f0}.hoursMatrixTable{min-width:980px}.personGroupCell{min-width:190px;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}.personGroupCell strong,.personGroupCell small,.complianceCell small{display:block}.personGroupCell small,.complianceCell small{margin-top:6px;color:var(--muted);font-size:12px;font-weight:700}.complianceCell{min-width:150px;vertical-align:top}.hoursCompliance{display:inline-flex;min-height:28px;align-items:center;padding:0 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}.hoursCompliance.ok{background:#eef9f0;color:#237a35}.hoursCompliance.warning{background:#fff4e8;color:#b85c00}.hoursCompliance.danger{background:#fff0f0;color:#b42318}.personStatus-ok .personGroupCell{border-left:4px solid var(--green)}.personStatus-warning .personGroupCell{border-left:4px solid var(--orange)}.personStatus-danger .personGroupCell{border-left:4px solid var(--red)}@media (max-width:1180px){.hoursKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (max-width:900px){.hoursKpiGrid{grid-template-columns:1fr}}`}</style>
+      <style jsx global>{`.hoursKpiGrid{grid-template-columns:repeat(5,minmax(0,1fr))}.hoursKpiGrid article small{display:block;margin-top:8px;color:var(--muted);line-height:1.4}.estimatedHoursCard{border-color:#ffb074;background:#fff7f0}.hoursMatrixTable{min-width:980px}.personGroupCell{min-width:210px;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}.personGroupCell strong,.personGroupCell small,.complianceCell small{display:block}.personGroupCell small,.complianceCell small{margin-top:6px;color:var(--muted);font-size:12px;font-weight:700}.complianceCell{min-width:150px;vertical-align:top}.hoursCompliance{display:inline-flex;min-height:28px;align-items:center;padding:0 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}.hoursCompliance.ok{background:#eef9f0;color:#237a35}.hoursCompliance.warning{background:#fff4e8;color:#b85c00}.hoursCompliance.danger{background:#fff0f0;color:#b42318}.personStatus-ok .personGroupCell{border-left:4px solid var(--green)}.personStatus-warning .personGroupCell{border-left:4px solid var(--orange)}.personStatus-danger .personGroupCell{border-left:4px solid var(--red)}@media (max-width:1180px){.hoursKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (max-width:900px){.hoursKpiGrid{grid-template-columns:1fr}}`}</style>
     </main>
   );
 }
