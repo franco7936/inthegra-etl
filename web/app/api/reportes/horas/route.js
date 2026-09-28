@@ -9,6 +9,8 @@ const REQUIRED_VIEWS = [
   'VW_REPORTE_HORAS_EQUIPO_TIPO',
 ];
 
+const REQUIRED_DETAIL_COLUMNS = ['horas_at', 'horas_pgi', 'tiempo_empleado'];
+
 function defaultDates() {
   const now = new Date();
   const to = now.toISOString().slice(0, 10);
@@ -67,13 +69,19 @@ async function getMissingViews(db) {
   return REQUIRED_VIEWS.filter((name) => !existingNames.has(name));
 }
 
-function emptyPayload(filters, missingViews) {
+async function getMissingDetailColumns(db) {
+  const columns = await queryRows(db, 'PRAGMA table_info(VW_REPORTE_HORAS_DETALLE)');
+  const columnNames = new Set(columns.map((row) => String(row.name || '').toLowerCase()));
+  return REQUIRED_DETAIL_COLUMNS.filter((name) => !columnNames.has(name));
+}
+
+function emptyPayload(filters, setupMessage) {
   return {
     ok: true,
     modelReady: false,
-    setupMessage: `Faltan vistas en Turso: ${missingViews.join(', ')}. Ejecutar el ETL con modo=full y recrear_modelo=true.`,
+    setupMessage,
     filters,
-    summary: { horas: 0, registros: 0, personas: 0, proyectos: 0 },
+    summary: { horas: 0, horas_at: 0, horas_pgi: 0, registros: 0, personas: 0, proyectos: 0 },
     byPerson: [],
     byTeam: [],
     filtersData: { projects: [], people: [], eventTypes: [] },
@@ -87,7 +95,12 @@ export async function GET(request) {
     const missingViews = await getMissingViews(db);
 
     if (missingViews.length) {
-      return NextResponse.json(emptyPayload(filters, missingViews));
+      return NextResponse.json(emptyPayload(filters, `Faltan vistas en Turso: ${missingViews.join(', ')}. Ejecutar el ETL principal.`));
+    }
+
+    const missingColumns = await getMissingDetailColumns(db);
+    if (missingColumns.length) {
+      return NextResponse.json(emptyPayload(filters, `La vista de horas todavia no tiene PGI (${missingColumns.join(', ')}). Ejecutar el ETL principal con etl_runner_v4.`));
     }
 
     const { where, args } = buildWhere(filters);
@@ -96,6 +109,8 @@ export async function GET(request) {
       queryRows(db, `
         SELECT
           ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas,
+          ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at,
+          ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi,
           COUNT(*) AS registros,
           COUNT(DISTINCT person_id) AS personas,
           COUNT(DISTINCT project_id) AS proyectos
@@ -111,6 +126,8 @@ export async function GET(request) {
           project_key_rpt,
           event_type,
           ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas,
+          ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at,
+          ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi,
           COUNT(*) AS registros,
           MAX(fecha) AS ultima_fecha
         FROM VW_REPORTE_HORAS_DETALLE
@@ -126,6 +143,8 @@ export async function GET(request) {
           project_key_rpt,
           event_type,
           ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas,
+          ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at,
+          ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi,
           COUNT(DISTINCT person_id) AS personas,
           COUNT(*) AS registros
         FROM VW_REPORTE_HORAS_DETALLE
@@ -158,7 +177,7 @@ export async function GET(request) {
       ok: true,
       modelReady: true,
       filters,
-      summary: summaryRows[0] || { horas: 0, registros: 0, personas: 0, proyectos: 0 },
+      summary: summaryRows[0] || { horas: 0, horas_at: 0, horas_pgi: 0, registros: 0, personas: 0, proyectos: 0 },
       byPerson,
       byTeam,
       filtersData: {
