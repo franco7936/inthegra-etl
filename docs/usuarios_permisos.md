@@ -69,9 +69,24 @@ Flujo esperado:
 
 1. Crear o editar roles en `/usuarios/roles`.
 2. Definir que reportes puede ver cada rol.
-3. Crear usuarios en `/usuarios` y asignarles un rol.
+3. Crear usuarios en `/usuarios`, asignarles un rol y asociarlos a un equipo.
 
 De esta manera no hace falta configurar reportes persona por persona.
+
+## Alcance por equipo
+
+Cada usuario no administrador debe tener un equipo asignado desde `/usuarios`.
+
+Ese equipo se guarda como `app_users.project_id` y se toma de `map_equipo_proyecto.project_id`.
+
+Los reportes operativos se filtran automaticamente por el equipo del usuario:
+
+- `Reporte de horas`: filtra por `project_id`.
+- `Novedades laborales`: filtra por `project_id`.
+- `Status semanal`: filtra por el nombre del equipo asociado al `project_id`.
+- `PGI log`: un usuario no administrador solo puede cargar horas en su equipo.
+
+El administrador puede ver y cargar datos de todos los equipos.
 
 ## Tablas
 
@@ -87,6 +102,7 @@ app_report_permissions
 - `username`
 - `password_hash`
 - `role`: clave del rol asignado
+- `project_id`: equipo/proyecto asignado para limitar reportes operativos
 - `enabled`
 - `fecha_carga`
 
@@ -114,7 +130,7 @@ app_report_permissions
 
 ## Permisos visibles
 
-Al iniciar sesion se cargan en la cookie los reportes permitidos para el rol del usuario.
+Al iniciar sesion se cargan en la cookie los reportes permitidos para el rol del usuario y su equipo asignado.
 
 La home usa esos permisos para mostrar solo los accesos habilitados.
 
