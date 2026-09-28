@@ -18,6 +18,8 @@ export default function HomePage() {
           <Link className="navLink" href="/reportes/calidad-performance">Calidad y performance</Link>
           <Link className="navLink" href="/reportes/novedades-laborales">Novedades laborales</Link>
           <Link className="navLink" href="/reportes/status-semanal">Status semanal</Link>
+          <Link className="navLink" href="/usuarios">Usuarios</Link>
+          <Link className="navLink" href="/login">Login</Link>
         </div>
       </nav>
 
@@ -35,7 +37,7 @@ export default function HomePage() {
         <Link className="reportTile" href="/reportes/horas">
           <span>H</span>
           <h2>Reporte de horas</h2>
-          <p>Horas por persona, proyecto y tipo de actividad con filtros dinamicos.</p>
+          <p>Horas por persona, proyecto y tipo de actividad con filtros dinamicos y cargas PGI.</p>
         </Link>
         <Link className="reportTile" href="/reportes/entrega-calidad">
           <span>I</span>
@@ -55,12 +57,17 @@ export default function HomePage() {
         <Link className="reportTile" href="/reportes/novedades-laborales">
           <span>N</span>
           <h2>Novedades laborales</h2>
-          <p>Day off, feriados y horas extras por persona y por equipo.</p>
+          <p>Day off, vacaciones y horas extras por persona y por equipo.</p>
         </Link>
         <Link className="reportTile" href="/reportes/status-semanal">
           <span>S</span>
           <h2>Status semanal</h2>
           <p>Reporte semanal de lideres con avances, riesgos, bloqueos y proximos pasos.</p>
+        </Link>
+        <Link className="reportTile" href="/usuarios">
+          <span>U</span>
+          <h2>Usuarios y permisos</h2>
+          <p>Configuracion de usuarios, roles y reportes visibles.</p>
         </Link>
       </section>
     </main>
