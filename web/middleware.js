@@ -14,8 +14,9 @@ function decodeSession(value) {
   if (!value || !value.includes('.')) return null;
   try {
     const [payload] = value.split('.');
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(atob(padded));
   } catch {
     return null;
   }
@@ -49,18 +50,7 @@ export function middleware(request) {
   }
 
   const reportKey = requiredReport(pathname);
-  if (reportKey && session.role !== 'admin' && !Array.isArray(session.reports)) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
-  }
-  if (reportKey && session.role !== 'admin' && !session.reports.includes(reportKey)) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
-  }
-
-  if (pathname === '/login') {
+  if (reportKey && session.role !== 'admin' && (!Array.isArray(session.reports) || !session.reports.includes(reportKey))) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);
