@@ -1,4 +1,4 @@
-# Reporte de horas SaaS web
+# Reporte de horas web
 
 Ruta:
 
@@ -11,6 +11,33 @@ API:
 ```text
 /api/reportes/horas
 ```
+
+## Fuentes de horas
+
+El reporte combina dos fuentes:
+
+- `at_workload`: horas que vienen desde ActivityTimeline/Jira.
+- `pgi_workload`: horas manuales PGI cargadas desde la web cuando no vienen desde Jira.
+
+La vista `VW_REPORTE_HORAS_DETALLE` expone:
+
+- `horas_at`: horas provenientes de ActivityTimeline.
+- `horas_pgi`: horas cargadas manualmente en PGI.
+- `tiempo_empleado`: total usado por el reporte, calculado como AT + PGI segun la fila.
+
+## PGI Log
+
+La pantalla incluye el boton `PGI Log`.
+
+Al abrirlo se muestra un popup para cargar:
+
+- Proyecto.
+- Persona.
+- Fecha.
+- Horas.
+- Comentario opcional.
+
+Cada carga se guarda en `pgi_workload` y se suma automaticamente al total de horas por persona y proyecto cuando la vista esta actualizada.
 
 ## Filtros disponibles
 
@@ -37,9 +64,11 @@ El filtro de persona usa `person_id` desde `VW_REPORTE_HORAS_DETALLE` y lista la
 La pantalla muestra:
 
 - Total estimado de horas del mes: `personas con horas en el resultado * 8 horas * dias habiles del mes`.
-- Horas cargadas reales.
+- Horas totales cargadas.
+- Horas AT.
+- Horas PGI.
 - Porcentaje de cobertura contra el estimado.
-- Personas, proyectos y registros incluidos en el filtro.
+- Registros incluidos en el filtro.
 
 El texto del estimado muestra el mes seleccionado, la cantidad de personas consideradas y los dias habiles calculados.
 
@@ -50,7 +79,7 @@ En la vista `Personas`, la grilla agrupa por persona y muestra una fila por cada
 Debajo del nombre de cada persona se muestra:
 
 - Ultima fecha de carga de horas dentro del mes filtrado.
-- Total de horas cargadas por esa persona.
+- Total de horas cargadas por esa persona, incluyendo AT y PGI.
 
 Para cada persona se calcula:
 
@@ -67,16 +96,14 @@ Estados visuales:
 
 La franja izquierda de cada persona usa el mismo color del estado.
 
-Esto sirve para detectar rapidamente si faltan horas de carga por persona en el mes revisado.
-
 ## Exportacion a Excel
 
 La pantalla incluye el boton `Exportar Excel`.
 
 La exportacion toma exactamente la vista filtrada que esta viendo el usuario:
 
-- Si esta seleccionada la vista `Personas`, exporta la matriz por persona/proyecto/tipo de actividad e incluye ultima fecha de carga, total por persona, estimado por persona, porcentaje de cumplimiento y estado.
-- Si esta seleccionada la vista `Proyectos`, exporta la matriz por proyecto/tipo de actividad.
+- Si esta seleccionada la vista `Personas`, exporta la matriz por persona/proyecto/tipo de actividad e incluye ultima fecha de carga, columna PGI, total por persona, estimado por persona, porcentaje de cumplimiento y estado.
+- Si esta seleccionada la vista `Proyectos`, exporta la matriz por proyecto/tipo de actividad con columna PGI.
 - El archivo incluye el mes aplicado, el rango `from/to`, los dias habiles y el total estimado de horas.
 
 El archivo se genera en el navegador como `.xls` compatible con Excel, sin agregar dependencias al proyecto Next.js.
@@ -86,3 +113,5 @@ El archivo se genera en el navegador como `.xls` compatible con Excel, sin agreg
 - `VW_REPORTE_HORAS_DETALLE`
 - `VW_REPORTE_HORAS_PERSONA_TIPO`
 - `VW_REPORTE_HORAS_EQUIPO_TIPO`
+
+Estas vistas se refrescan desde `etl_runner_v4.py`.
