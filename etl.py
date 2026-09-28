@@ -36,6 +36,10 @@ JIRA_BASE = os.getenv("JIRA_BASE_URL", "").rstrip("/")
 JIRA_EMAIL = os.getenv("JIRA_EMAIL", "")
 JIRA_TOKEN = os.getenv("JIRA_API_TOKEN", "")
 PROJECTS = [p.strip() for p in os.getenv("JIRA_PROJECTS", "").split(",") if p.strip()]
+JIRA_PROJECT_KEYS_OBLIGATORIOS = {"CORE"}
+JIRA_PROJECT_NAME_MATCHES_OBLIGATORIOS = [
+    ("soporte", "customer", "services"),
+]
 TURSO_URL = os.getenv("TURSO_URL", "").replace("libsql://", "https://")
 AT_BASE = os.getenv("AT_BASE_URL", JIRA_BASE).rstrip("/")
 AT_TOKEN = os.getenv("AT_TOKEN", "")
@@ -331,14 +335,22 @@ def ultima_carga(conn, tabla):
         return None
 
 
+def proyecto_jira_habilitado(proyecto, permitidos):
+    key = str(proyecto.get("key") or "").strip().upper()
+    nombre_normalizado = normalizar(proyecto.get("name", ""))
+    if key in permitidos or key in JIRA_PROJECT_KEYS_OBLIGATORIOS:
+        return True
+    return any(all(token in nombre_normalizado for token in tokens) for tokens in JIRA_PROJECT_NAME_MATCHES_OBLIGATORIOS)
+
+
 def consultar_proyectos_jira(jira):
     items = jira.paginar("project/search", key_valores="values")
     if not items:
         data = jira.get("project")
         items = data if isinstance(data, list) else []
     if PROJECTS:
-        permitidos = set(PROJECTS)
-        items = [p for p in items if p.get("key") in permitidos]
+        permitidos = {p.upper() for p in PROJECTS}
+        items = [p for p in items if proyecto_jira_habilitado(p, permitidos)]
     return [p for p in items if p.get("key")]
 
 
