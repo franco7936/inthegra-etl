@@ -21,6 +21,18 @@ APIs:
 /api/usuarios
 ```
 
+## Login obligatorio
+
+La web usa `middleware.js` para exigir sesion.
+
+Si un usuario entra a cualquier URL del portal sin estar logueado, se redirige automaticamente a:
+
+```text
+/login
+```
+
+Despues de iniciar sesion, la home muestra solo los reportes permitidos para ese usuario.
+
 ## Usuario inicial
 
 El modelo crea un usuario inicial cuando se ejecuta el ETL o cuando se usa el login por primera vez:
@@ -59,8 +71,12 @@ app_report_permissions
 - `admin`: puede administrar usuarios y permisos. Tiene todos los reportes habilitados.
 - `viewer`: puede tener permisos puntuales por reporte.
 
-## Estado actual
+## Permisos visibles
 
-El modulo ya permite iniciar sesion y administrar usuarios/permisos.
+Al iniciar sesion se cargan en la cookie de sesion los reportes permitidos del usuario.
 
-La siguiente mejora recomendada es activar enforcement estricto por reporte, para que cada API/pagina valide `app_report_permissions` antes de mostrar datos.
+La home usa esos permisos para mostrar solo los accesos habilitados.
+
+Las rutas `/reportes/...` tambien verifican la sesion y redirigen a la home si el usuario no tiene el reporte asignado.
+
+La ruta `/usuarios` queda reservada para usuarios con rol `admin`.
