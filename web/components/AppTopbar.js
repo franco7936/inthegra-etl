@@ -31,6 +31,12 @@ function initials(name) {
   return String(name || 'U').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'U';
 }
 
+function roleLabel(role) {
+  if (role === 'admin') return 'Administrador';
+  if (!role) return 'Usuario';
+  return String(role).replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default function AppTopbar() {
   const [user, setUser] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -83,7 +89,7 @@ export default function AppTopbar() {
             <div className="profileMenu">
               <div className="profileHeader">
                 <span className="profileAvatar">{initials(user.username)}</span>
-                <div><strong>{user.username}</strong><small>{user.role === 'admin' ? 'Administrador' : 'Usuario'}</small></div>
+                <div><strong>{user.username}</strong><small>{roleLabel(user.role)}</small></div>
               </div>
               <form action="/api/auth/logout" method="post">
                 <button type="submit">Cerrar sesion</button>
