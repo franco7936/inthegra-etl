@@ -18,6 +18,8 @@ export function sessionValue(user) {
   const payload = Buffer.from(JSON.stringify({
     username: user.username,
     role: user.role,
+    project_id: user.project_id ? Number(user.project_id) : null,
+    project_name: user.project_name || '',
     reports: user.role === 'admin' ? REPORTS.map((report) => report.key) : (user.reports || []),
   })).toString('base64url');
   const secret = process.env.AUTH_SECRET || 'inthegra-local-auth-secret';
@@ -33,7 +35,12 @@ export function parseSession(value) {
   if (signature !== expected) return null;
   try {
     const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return { ...session, reports: Array.isArray(session.reports) ? session.reports : [] };
+    return {
+      ...session,
+      reports: Array.isArray(session.reports) ? session.reports : [],
+      project_id: session.project_id ? Number(session.project_id) : null,
+      project_name: session.project_name || '',
+    };
   } catch {
     return null;
   }
