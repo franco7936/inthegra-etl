@@ -117,6 +117,8 @@ export default function AppTopbar() {
         .profileMenu form { margin-top: 10px; }
         .profileMenu button[type='submit'] { width: 100%; min-height: 42px; border: 0; border-radius: 10px; background: rgba(255,255,255,.08); color: #fff; font-weight: 850; cursor: pointer; text-align: left; padding: 0 12px; }
         .profileMenu button[type='submit']:hover { background: rgba(255,255,255,.14); }
+        .hoursMatrixTable .pgiColumn { background: transparent !important; }
+        .hoursMatrixTable tbody tr:has(.complianceCell) td:nth-last-child(3), .hoursMatrixTable tbody tr:not(:has(.complianceCell)) td:nth-last-child(2) { background: #fff8f1 !important; }
         @media (max-width: 900px) { .appTopbar { align-items: flex-start; flex-direction: column; padding: 12px 18px; } .appNav { justify-content: flex-start; flex-wrap: wrap; } .profileArea { position: absolute; top: 10px; right: 18px; } }
       `}</style>
     </>
