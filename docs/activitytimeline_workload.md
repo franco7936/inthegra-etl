@@ -47,6 +47,43 @@ Si existe persona pero no existe un match confiable de equipo/proyecto, el regis
 
 Estos registros solo son visibles para administradores en el reporte de horas. Los usuarios no administradores tienen el reporte operativo filtrado por su `project_id`, por lo que no ven horas sin proyecto ni horas de otros equipos.
 
+## PGI manual
+
+`pgi_workload` permite cargar horas manuales desde la web.
+
+Columnas clave:
+
+- `person_id`
+- `project_id`
+- `fecha`
+- `horas`
+- `incidence_type`
+- `comentario`
+
+Tipos de `incidence_type`:
+
+- `pgi`: PGI general. Suma al reporte de horas, pero no entra en novedades laborales.
+- `day_off`: Day off. Suma al reporte de horas y a novedades laborales.
+- `holiday`: Vacaciones. Suma al reporte de horas y a novedades laborales.
+- `overtime`: Horas extras. Suma al reporte de horas y a novedades laborales.
+
+## Novedades laborales
+
+`VW_NOVEDADES_LABORALES` debe tomar datos reales de:
+
+- `at_workload`
+- `pgi_workload`
+
+No debe usar fechas hardcodeadas.
+
+La vista normaliza novedades a estos tipos:
+
+- `day_off`
+- `holiday`
+- `overtime`
+
+Para `day_off` y `holiday`, si el origen no trae horas, se calcula 8 horas por cada dia laborable del rango del evento.
+
 ## Deduplicacion
 
 `etl_runner_v3.py` agrega `dedupe_key` sobre `at_workload` para evitar duplicar la misma actividad.
