@@ -10,30 +10,28 @@ async function queryRows(db, sql, args = []) {
 }
 
 async function ensureAuthTables(db) {
-  await db.batch([
-    `CREATE TABLE IF NOT EXISTS app_users (user_id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer', enabled INTEGER DEFAULT 1, fecha_carga TEXT)`,
-    `CREATE TABLE IF NOT EXISTS app_report_permissions (permission_id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, report_key TEXT NOT NULL, can_view INTEGER DEFAULT 1, fecha_carga TEXT, UNIQUE(username, report_key))`,
-  ]);
-  await db.execute({
-    sql: `INSERT OR IGNORE INTO app_users (username, password_hash, role, enabled, fecha_carga) VALUES (?, ?, 'admin', 1, datetime('now'))`,
-    args: ['admin', hashPassword(ADMIN_PASSWORD)],
-  });
+  await db.execute(`CREATE TABLE IF NOT EXISTS app_roles (role_key TEXT PRIMARY KEY, label TEXT NOT NULL, is_admin INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1, fecha_carga TEXT)`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS app_role_permissions (permission_id INTEGER PRIMARY KEY AUTOINCREMENT, role_key TEXT NOT NULL, report_key TEXT NOT NULL, can_view INTEGER DEFAULT 1, fecha_carga TEXT, UNIQUE(role_key, report_key))`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS app_users (user_id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer', enabled INTEGER DEFAULT 1, fecha_carga TEXT)`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS app_report_permissions (permission_id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, report_key TEXT NOT NULL, can_view INTEGER DEFAULT 1, fecha_carga TEXT, UNIQUE(username, report_key))`);
+  await db.execute({ sql: `INSERT OR IGNORE INTO app_roles (role_key, label, is_admin, enabled, fecha_carga) VALUES ('admin', 'Administrador', 1, 1, datetime('now'))` });
+  await db.execute({ sql: `INSERT OR IGNORE INTO app_roles (role_key, label, is_admin, enabled, fecha_carga) VALUES ('viewer', 'Usuario operativo', 0, 1, datetime('now'))` });
   for (const report of REPORTS) {
-    await db.execute({
-      sql: `INSERT OR IGNORE INTO app_report_permissions (username, report_key, can_view, fecha_carga) VALUES ('admin', ?, 1, datetime('now'))`,
-      args: [report.key],
-    });
+    await db.execute({ sql: `INSERT OR IGNORE INTO app_role_permissions (role_key, report_key, can_view, fecha_carga) VALUES ('admin', ?, 1, datetime('now'))`, args: [report.key] });
+    await db.execute({ sql: `INSERT OR IGNORE INTO app_role_permissions (role_key, report_key, can_view, fecha_carga) VALUES ('viewer', ?, ?, datetime('now'))`, args: [report.key, report.key === 'horas' ? 1 : 0] });
   }
+  await db.execute({ sql: `INSERT OR IGNORE INTO app_users (username, password_hash, role, enabled, fecha_carga) VALUES (?, ?, 'admin', 1, datetime('now'))`, args: ['admin', hashPassword(ADMIN_PASSWORD)] });
 }
 
 async function getAllowedReports(db, user) {
-  if (user.role === 'admin') return REPORTS.map((report) => report.key);
+  const roleRows = await queryRows(db, `SELECT is_admin FROM app_roles WHERE role_key = ? AND enabled = 1`, [user.role]);
+  if (Number(roleRows[0]?.is_admin || 0) === 1 || user.role === 'admin') return REPORTS.map((report) => report.key);
   const rows = await queryRows(db, `
     SELECT report_key
-    FROM app_report_permissions
-    WHERE username = ? AND can_view = 1
+    FROM app_role_permissions
+    WHERE role_key = ? AND can_view = 1
     ORDER BY report_key
-  `, [user.username]);
+  `, [user.role]);
   return rows.map((row) => row.report_key);
 }
 
