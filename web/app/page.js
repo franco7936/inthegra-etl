@@ -1,6 +1,14 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { REPORTS, parseSession } from '@/lib/auth';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const session = parseSession(cookieStore.get('inthegra_session')?.value);
+  const visibleReports = session?.role === 'admin'
+    ? REPORTS
+    : REPORTS.filter((report) => session?.reports?.includes(report.key));
+
   return (
     <main className="shell">
       <nav className="topbar">
@@ -8,18 +16,13 @@ export default function HomePage() {
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
           <span>
             <strong>Inthegra Reports</strong>
-            <small>Portal operativo</small>
+            <small>{session?.username || 'Portal operativo'}</small>
           </span>
         </a>
         <div className="navActions">
-          <Link className="navLink" href="/reportes/horas">Reporte de horas</Link>
-          <Link className="navLink" href="/reportes/entrega-calidad">Entrega y calidad</Link>
-          <Link className="navLink" href="/reportes/inversion-estrategica">Inversion estrategica</Link>
-          <Link className="navLink" href="/reportes/calidad-performance">Calidad y performance</Link>
-          <Link className="navLink" href="/reportes/novedades-laborales">Novedades laborales</Link>
-          <Link className="navLink" href="/reportes/status-semanal">Status semanal</Link>
-          <Link className="navLink" href="/usuarios">Usuarios</Link>
-          <Link className="navLink" href="/login">Login</Link>
+          {visibleReports.map((report) => <Link key={report.key} className="navLink" href={report.href}>{report.label}</Link>)}
+          {session?.role === 'admin' && <Link className="navLink" href="/usuarios">Usuarios</Link>}
+          <form action="/api/auth/logout" method="post"><button className="navLink navButton" type="submit">Salir</button></form>
         </div>
       </nav>
 
@@ -34,41 +37,15 @@ export default function HomePage() {
       </section>
 
       <section className="contentGrid reportsGridFive">
-        <Link className="reportTile" href="/reportes/horas">
-          <span>H</span>
-          <h2>Reporte de horas</h2>
-          <p>Horas por persona, proyecto y tipo de actividad con filtros dinamicos y cargas PGI.</p>
-        </Link>
-        <Link className="reportTile" href="/reportes/entrega-calidad">
-          <span>I</span>
-          <h2>Entrega y calidad de servicio</h2>
-          <p>Indicadores generales, SaaS y desarrollo a medida para seguimiento ejecutivo.</p>
-        </Link>
-        <Link className="reportTile" href="/reportes/inversion-estrategica">
-          <span>E</span>
-          <h2>Inversion estrategica</h2>
-          <p>Horas destinadas agrupadas por proyecto y por epica.</p>
-        </Link>
-        <Link className="reportTile" href="/reportes/calidad-performance">
-          <span>Q</span>
-          <h2>Calidad y performance operativa</h2>
-          <p>Metricas QA para priorizar mejoras y reducir riesgo en releases.</p>
-        </Link>
-        <Link className="reportTile" href="/reportes/novedades-laborales">
-          <span>N</span>
-          <h2>Novedades laborales</h2>
-          <p>Day off, vacaciones y horas extras por persona y por equipo.</p>
-        </Link>
-        <Link className="reportTile" href="/reportes/status-semanal">
-          <span>S</span>
-          <h2>Status semanal</h2>
-          <p>Reporte semanal de lideres con avances, riesgos, bloqueos y proximos pasos.</p>
-        </Link>
-        <Link className="reportTile" href="/usuarios">
-          <span>U</span>
-          <h2>Usuarios y permisos</h2>
-          <p>Configuracion de usuarios, roles y reportes visibles.</p>
-        </Link>
+        {visibleReports.map((report) => (
+          <Link className="reportTile" href={report.href} key={report.key}>
+            <span>{report.tile}</span>
+            <h2>{report.label}</h2>
+            <p>{report.description}</p>
+          </Link>
+        ))}
+        {session?.role === 'admin' && <Link className="reportTile" href="/usuarios"><span>U</span><h2>Usuarios y permisos</h2><p>Configuracion de usuarios, roles y reportes visibles.</p></Link>}
+        {!visibleReports.length && <div className="reportTile muted"><span>0</span><h2>Sin reportes asignados</h2><p>Solicita a un administrador que habilite reportes para tu usuario.</p></div>}
       </section>
     </main>
   );
