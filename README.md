@@ -247,7 +247,7 @@ Variables operativas del workflow:
 
 | Variable | Uso |
 | --- | --- |
-| `JIRA_PROJECTS` | Lista de proyectos Jira a extraer. Aunque esta lista sea cerrada, el ETL siempre incluye `CORE` y el proyecto cuyo nombre contenga `Soporte`, `Customer` y `Services`. |
+| `JIRA_PROJECTS` | Lista de proyectos Jira a extraer. Aunque esta lista sea cerrada, el ETL siempre incluye `CORE` y el proyecto llamado exactamente `Soporte&Customer Services`. |
 | `JIRA_MAX_RETRIES` | Reintentos ante cortes transitorios de Jira. |
 | `JIRA_RETRY_BASE_SECONDS` | Espera base entre reintentos de Jira. |
 | `JIRA_PAGE_SIZE` | Cantidad de issues por pagina en Jira. |

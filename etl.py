@@ -37,9 +37,7 @@ JIRA_EMAIL = os.getenv("JIRA_EMAIL", "")
 JIRA_TOKEN = os.getenv("JIRA_API_TOKEN", "")
 PROJECTS = [p.strip() for p in os.getenv("JIRA_PROJECTS", "").split(",") if p.strip()]
 JIRA_PROJECT_KEYS_OBLIGATORIOS = {"CORE"}
-JIRA_PROJECT_NAME_MATCHES_OBLIGATORIOS = [
-    ("soporte", "customer", "services"),
-]
+JIRA_PROJECT_NAMES_OBLIGATORIOS = {"Soporte&Customer Services"}
 TURSO_URL = os.getenv("TURSO_URL", "").replace("libsql://", "https://")
 AT_BASE = os.getenv("AT_BASE_URL", JIRA_BASE).rstrip("/")
 AT_TOKEN = os.getenv("AT_TOKEN", "")
@@ -337,10 +335,10 @@ def ultima_carga(conn, tabla):
 
 def proyecto_jira_habilitado(proyecto, permitidos):
     key = str(proyecto.get("key") or "").strip().upper()
-    nombre_normalizado = normalizar(proyecto.get("name", ""))
+    nombre = str(proyecto.get("name") or "").strip()
     if key in permitidos or key in JIRA_PROJECT_KEYS_OBLIGATORIOS:
         return True
-    return any(all(token in nombre_normalizado for token in tokens) for tokens in JIRA_PROJECT_NAME_MATCHES_OBLIGATORIOS)
+    return nombre in JIRA_PROJECT_NAMES_OBLIGATORIOS
 
 
 def consultar_proyectos_jira(jira):
