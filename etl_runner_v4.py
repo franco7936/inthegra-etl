@@ -3,6 +3,7 @@ Runner v4: extiende el modelo con carga manual PGI y usuarios de la web.
 
 Mantiene los parches de v3 sobre at_workload y agrega:
 - pgi_workload para horas manuales no provenientes de Jira/ActivityTimeline.
+- pgi_workload.incidence_type clasifica PGI general, day off, vacaciones y horas extras.
 - app_users, app_roles y app_role_permissions para login y permisos por rol.
 - app_users.project_id asocia cada usuario no administrador a un equipo/proyecto.
 - app_report_permissions queda solo por compatibilidad con datos anteriores.
@@ -154,6 +155,7 @@ def asegurar_tablas_app(conn):
             project_id INTEGER NOT NULL,
             fecha TEXT NOT NULL,
             horas REAL NOT NULL,
+            incidence_type TEXT DEFAULT 'pgi',
             comentario TEXT,
             creado_por TEXT,
             activo INTEGER DEFAULT 1,
@@ -198,6 +200,7 @@ def asegurar_tablas_app(conn):
         INSERT OR IGNORE INTO app_users (username, password_hash, role, enabled, fecha_carga)
         VALUES ('admin', '{ADMIN_PASSWORD_HASH}', 'admin', 1, datetime('now'));
     """)
+    _ensure_column(conn, "pgi_workload", "incidence_type", "TEXT DEFAULT 'pgi'")
     _ensure_column(conn, "app_users", "project_id", "INTEGER")
     for report_key in REPORT_KEYS:
         conn.execute(
@@ -269,7 +272,12 @@ def refrescar_vistas_v4(conn):
             me.project_key_rpt,
             me.team_id_at,
             NULL AS issue_key,
-            'PGI' AS event_type,
+            CASE LOWER(TRIM(COALESCE(p.incidence_type, 'pgi')))
+                WHEN 'day_off' THEN 'day_off'
+                WHEN 'holiday' THEN 'holiday'
+                WHEN 'overtime' THEN 'overtime'
+                ELSE 'PGI'
+            END AS event_type,
             COALESCE(p.comentario, 'PGI log') AS summary,
             date(p.fecha) AS fecha,
             p.fecha AS planned_start,
@@ -328,6 +336,9 @@ def validar_modelo_v4(conn):
     missing = required - tables
     if missing:
         raise RuntimeError("Faltan tablas v4: " + ", ".join(sorted(missing)))
+    pgi_cols = {row[1] for row in conn.execute("PRAGMA table_info(pgi_workload)").fetchall()}
+    if "incidence_type" not in pgi_cols:
+        raise RuntimeError("Falta columna pgi_workload.incidence_type")
     app_user_cols = {row[1] for row in conn.execute("PRAGMA table_info(app_users)").fetchall()}
     if "project_id" not in app_user_cols:
         raise RuntimeError("Falta columna app_users.project_id")
