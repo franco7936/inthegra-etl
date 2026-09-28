@@ -22,7 +22,7 @@ export default async function HomePage() {
         <div className="navActions">
           {visibleReports.map((report) => <Link key={report.key} className="navLink" href={report.href}>{report.label}</Link>)}
           {session?.role === 'admin' && <Link className="navLink" href="/usuarios">Usuarios</Link>}
-          <form action="/api/auth/logout" method="post"><button className="navLink navButton" type="submit">Salir</button></form>
+          <form action="/api/auth/logout" method="post"><button className="navLink" style={{ border: 0, background: 'transparent', padding: 0, cursor: 'pointer' }} type="submit">Salir</button></form>
         </div>
       </nav>
 
