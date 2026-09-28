@@ -1,15 +1,11 @@
-# Usuarios y permisos
+# Usuarios, roles y permisos
 
-Ruta web:
-
-```text
-/usuarios
-```
-
-Login:
+Rutas web:
 
 ```text
 /login
+/usuarios
+/usuarios/roles
 ```
 
 APIs:
@@ -19,6 +15,7 @@ APIs:
 /api/auth/logout
 /api/auth/me
 /api/usuarios
+/api/roles
 ```
 
 ## Login obligatorio
@@ -31,7 +28,7 @@ Si un usuario entra a cualquier URL del portal sin estar logueado, se redirige a
 /login
 ```
 
-Despues de iniciar sesion, la home muestra solo los reportes permitidos para ese usuario.
+Despues de iniciar sesion, la home y la barra superior muestran solo los reportes permitidos para el rol del usuario.
 
 ## Navegacion global
 
@@ -62,10 +59,26 @@ contrasena temporal: admin123
 
 Esta contrasena es temporal y debe cambiarse desde el modulo de usuarios cuando el portal quede operativo.
 
+El usuario `admin` inicial no se puede eliminar desde la web. Ademas, el sistema valida que siempre exista al menos un administrador activo.
+
+## Modelo de permisos
+
+Los permisos se administran por rol.
+
+Flujo esperado:
+
+1. Crear o editar roles en `/usuarios/roles`.
+2. Definir que reportes puede ver cada rol.
+3. Crear usuarios en `/usuarios` y asignarles un rol.
+
+De esta manera no hace falta configurar reportes persona por persona.
+
 ## Tablas
 
 ```text
 app_users
+app_roles
+app_role_permissions
 app_report_permissions
 ```
 
@@ -73,28 +86,38 @@ app_report_permissions
 
 - `username`
 - `password_hash`
-- `role`: `admin` o `viewer`
+- `role`: clave del rol asignado
 - `enabled`
 - `fecha_carga`
 
-`app_report_permissions` guarda:
+`app_roles` guarda:
 
-- `username`
+- `role_key`
+- `label`
+- `is_admin`
+- `enabled`
+- `fecha_carga`
+
+`app_role_permissions` guarda:
+
+- `role_key`
 - `report_key`
 - `can_view`
 - `fecha_carga`
 
-## Roles
+`app_report_permissions` queda solo por compatibilidad con el modelo anterior de permisos por usuario.
 
-- `admin`: puede administrar usuarios y permisos. Tiene todos los reportes habilitados.
-- `viewer`: puede tener permisos puntuales por reporte.
+## Roles iniciales
+
+- `admin`: rol administrador. Tiene todos los reportes habilitados y acceso al modulo de usuarios.
+- `viewer`: rol operativo inicial. Por defecto queda habilitado para el reporte de horas.
 
 ## Permisos visibles
 
-Al iniciar sesion se cargan en la cookie de sesion los reportes permitidos del usuario.
+Al iniciar sesion se cargan en la cookie los reportes permitidos para el rol del usuario.
 
 La home usa esos permisos para mostrar solo los accesos habilitados.
 
 Las rutas `/reportes/...` tambien verifican la sesion y redirigen a la home si el usuario no tiene el reporte asignado.
 
-La ruta `/usuarios` queda reservada para usuarios con rol `admin`.
+La ruta `/usuarios` y la ruta `/usuarios/roles` quedan reservadas para el rol `admin`.
