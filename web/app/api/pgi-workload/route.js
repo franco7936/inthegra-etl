@@ -43,8 +43,9 @@ export async function GET(request) {
   try {
     const session = parseSession(request.cookies.get('inthegra_session')?.value);
     const db = getTursoClient();
-    const projectWhere = session?.role === 'admin' ? '' : 'AND project_id = ?';
-    const projectArgs = session?.role === 'admin' ? [] : [Number(session?.project_id || 0)];
+    const isAdmin = session?.role === 'admin';
+    const projectWhere = isAdmin ? '' : 'AND project_id = ?';
+    const projectArgs = isAdmin ? [] : [Number(session?.project_id || 0)];
     const [projects, people] = await Promise.all([
       queryRows(db, `
         SELECT project_id, COALESCE(nombre_rpt, nombre_at, project_key_rpt) AS proyecto, project_key_rpt
@@ -59,7 +60,7 @@ export async function GET(request) {
         ORDER BY persona
       `),
     ]);
-    return NextResponse.json({ ok: true, projects, people });
+    return NextResponse.json({ ok: true, projects, people, canChooseProject: isAdmin, scopedProjectId: isAdmin ? null : Number(session?.project_id || 0) });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
