@@ -1,9 +1,9 @@
 DROP VIEW IF EXISTS VW_NOVEDADES_LABORALES;
 
 CREATE VIEW VW_NOVEDADES_LABORALES AS
-WITH RECURSIVE eventos AS (
+WITH RECURSIVE eventos_at AS (
     SELECT
-        w.workload_id,
+        'AT-' || w.workload_id AS registro_id,
         date(COALESCE(w.planned_start, w.planned_end)) AS fecha,
         date(COALESCE(w.planned_end, w.planned_start)) AS fecha_fin_raw,
         w.person_id,
@@ -12,13 +12,37 @@ WITH RECURSIVE eventos AS (
         COALESCE(me.nombre_rpt, me.nombre_at, 'Sin equipo') AS equipo,
         LOWER(TRIM(COALESCE(w.event_type, ''))) AS event_type_raw,
         LOWER(TRIM(COALESCE(w.summary, ''))) AS summary_raw,
-        COALESCE(w.tiempo_empleado, w.orig_estimate, 0) AS horas_base
+        COALESCE(w.tiempo_empleado, w.orig_estimate, 0) AS horas_base,
+        'AT' AS fuente
     FROM at_workload w
     LEFT JOIN map_personas mp ON mp.person_id = w.person_id
     LEFT JOIN map_equipo_proyecto me ON me.project_id = w.project_id
+    WHERE w.person_id IS NOT NULL
+), eventos_pgi AS (
+    SELECT
+        'PGI-' || p.pgi_id AS registro_id,
+        date(p.fecha) AS fecha,
+        date(p.fecha) AS fecha_fin_raw,
+        p.person_id,
+        COALESCE(mp.full_name_at, mp.user_name_rpt, 'Sin persona') AS persona,
+        p.project_id,
+        COALESCE(me.nombre_rpt, me.nombre_at, 'Sin equipo') AS equipo,
+        LOWER(TRIM(COALESCE(p.incidence_type, 'pgi'))) AS event_type_raw,
+        LOWER(TRIM(COALESCE(p.comentario, ''))) AS summary_raw,
+        COALESCE(p.horas, 0) AS horas_base,
+        'PGI' AS fuente
+    FROM pgi_workload p
+    LEFT JOIN map_personas mp ON mp.person_id = p.person_id
+    LEFT JOIN map_equipo_proyecto me ON me.project_id = p.project_id
+    WHERE COALESCE(p.activo, 1) = 1
+      AND LOWER(TRIM(COALESCE(p.incidence_type, 'pgi'))) IN ('day_off', 'holiday', 'overtime')
+), eventos AS (
+    SELECT * FROM eventos_at
+    UNION ALL
+    SELECT * FROM eventos_pgi
 ), normalizados AS (
     SELECT
-        workload_id,
+        registro_id,
         fecha,
         CASE
             WHEN fecha_fin_raw IS NOT NULL AND fecha_fin_raw > fecha THEN date(fecha_fin_raw, '-1 day')
@@ -28,6 +52,7 @@ WITH RECURSIVE eventos AS (
         persona,
         project_id,
         equipo,
+        fuente,
         CASE
             WHEN event_type_raw IN ('day_off', 'day off', 'day-off', 'dayoff', 'time off', 'time_off')
                 OR summary_raw LIKE '%day off%'
@@ -53,21 +78,21 @@ WITH RECURSIVE eventos AS (
         horas_base
     FROM eventos
     WHERE fecha IS NOT NULL
-), dias(workload_id, dia) AS (
-    SELECT workload_id, fecha
+), dias(registro_id, dia) AS (
+    SELECT registro_id, fecha
     FROM normalizados
     WHERE event_type IN ('day_off', 'holiday')
     UNION ALL
-    SELECT d.workload_id, date(d.dia, '+1 day')
+    SELECT d.registro_id, date(d.dia, '+1 day')
     FROM dias d
-    JOIN normalizados n ON n.workload_id = d.workload_id
+    JOIN normalizados n ON n.registro_id = d.registro_id
     WHERE d.dia < n.fecha_fin_inclusiva
 ), dias_laborables AS (
     SELECT
-        workload_id,
+        registro_id,
         SUM(CASE WHEN CAST(strftime('%w', dia) AS INTEGER) BETWEEN 1 AND 5 THEN 1 ELSE 0 END) AS dias_laborables
     FROM dias
-    GROUP BY workload_id
+    GROUP BY registro_id
 ), calculados AS (
     SELECT
         n.fecha,
@@ -76,13 +101,14 @@ WITH RECURSIVE eventos AS (
         n.project_id,
         n.equipo,
         n.event_type,
+        n.fuente,
         CASE
             WHEN n.event_type IN ('day_off', 'holiday') AND COALESCE(n.horas_base, 0) <= 0
                 THEN COALESCE(dl.dias_laborables, 0) * 8.0
             ELSE COALESCE(n.horas_base, 0)
         END AS horas_calculadas
     FROM normalizados n
-    LEFT JOIN dias_laborables dl ON dl.workload_id = n.workload_id
+    LEFT JOIN dias_laborables dl ON dl.registro_id = n.registro_id
     WHERE n.event_type IS NOT NULL
 )
 SELECT
@@ -99,6 +125,7 @@ SELECT
         ELSE event_type
     END AS event_label,
     ROUND(SUM(COALESCE(horas_calculadas, 0)), 2) AS horas,
-    COUNT(*) AS registros
+    COUNT(*) AS registros,
+    GROUP_CONCAT(DISTINCT fuente) AS fuentes
 FROM calculados
 GROUP BY fecha, person_id, persona, project_id, equipo, event_type;
