@@ -4,7 +4,7 @@
 
 ## Regla de carga
 
-La carga debe ingresar todos los `event_type` disponibles desde ActivityTimeline, siempre que puedan asociarse a una persona y a un equipo/proyecto valido.
+La carga debe ingresar todos los `event_type` disponibles desde ActivityTimeline, siempre que puedan asociarse a una persona.
 
 Fuentes usadas:
 
@@ -43,7 +43,9 @@ Este respaldo solo se usa si el equipo AT esta asociado a un proyecto Jira activ
 
 Esto evita perder eventos como `day_off`, `holiday`, vacaciones u otros eventos calendario que pertenecen al equipo pero no a un issue Jira.
 
-Si no existe un match confiable de persona o equipo/proyecto, el registro se omite.
+Si existe persona pero no existe un match confiable de equipo/proyecto, el registro se conserva con `project_id` nulo y se visualiza como `Sin proyecto`.
+
+Estos registros solo son visibles para administradores en el reporte de horas. Los usuarios no administradores tienen el reporte operativo filtrado por su `project_id`, por lo que no ven horas sin proyecto ni horas de otros equipos.
 
 ## Deduplicacion
 
