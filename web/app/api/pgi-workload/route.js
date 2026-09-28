@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getTursoClient, rowsFrom } from '@/lib/turso';
+import { parseSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,16 +39,19 @@ function validatePayload(payload) {
   return '';
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const session = parseSession(request.cookies.get('inthegra_session')?.value);
     const db = getTursoClient();
+    const projectWhere = session?.role === 'admin' ? '' : 'AND project_id = ?';
+    const projectArgs = session?.role === 'admin' ? [] : [Number(session?.project_id || 0)];
     const [projects, people] = await Promise.all([
       queryRows(db, `
         SELECT project_id, COALESCE(nombre_rpt, nombre_at, project_key_rpt) AS proyecto, project_key_rpt
         FROM map_equipo_proyecto
-        WHERE COALESCE(activo, 1) = 1 AND project_id IS NOT NULL
+        WHERE COALESCE(activo, 1) = 1 AND project_id IS NOT NULL ${projectWhere}
         ORDER BY proyecto
-      `),
+      `, projectArgs),
       queryRows(db, `
         SELECT person_id, COALESCE(full_name_at, user_name_rpt, username_at) AS persona
         FROM map_personas
@@ -63,6 +67,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const session = parseSession(request.cookies.get('inthegra_session')?.value);
     const payload = await request.json();
     const error = validatePayload(payload);
     if (error) return NextResponse.json({ ok: false, error }, { status: 400 });
@@ -72,10 +77,13 @@ export async function POST(request) {
 
     const personId = Number(payload.personId);
     const projectId = Number(payload.projectId);
+    if (session?.role !== 'admin' && Number(session?.project_id || 0) !== projectId) {
+      return NextResponse.json({ ok: false, error: 'No tenes permiso para cargar horas en ese equipo.' }, { status: 403 });
+    }
     const horas = Number(payload.horas);
     const fecha = String(payload.fecha).slice(0, 10);
     const comentario = String(payload.comentario || '').slice(0, 300);
-    const creadoPor = String(payload.creadoPor || 'web').slice(0, 80);
+    const creadoPor = String(payload.creadoPor || session?.username || 'web').slice(0, 80);
 
     await db.execute({
       sql: `
