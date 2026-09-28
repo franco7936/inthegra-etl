@@ -7,15 +7,22 @@ Mantiene los parches de v3 sobre at_workload y agrega:
 - app_users.project_id asocia cada usuario no administrador a un equipo/proyecto.
 - app_report_permissions queda solo por compatibilidad con datos anteriores.
 - Vistas de horas con desglose horas_at / horas_pgi / total.
+
+Tambien corrige ActivityTimeline para no perder event_type sin issue Jira:
+si un evento AT no trae projectKey/issueKey, se usa como respaldo el team_id_at
+siempre que ese equipo este mapeado a un proyecto Jira activo.
 """
 
 import etl
+import etl_runner_v2
 import etl_runner_v3  # noqa: F401 - aplica los parches v3 antes de extender el modelo
 
 
 _original_crear_tablas = etl.crear_tablas
 _original_refrescar_vistas = etl.refrescar_vistas
 _original_validar_modelo = etl.validar_modelo
+_original_extraer_at_workload = etl.extraer_at_workload
+_original_at_append_row = etl_runner_v2._append_row
 
 ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"  # admin123
 REPORT_KEYS = [
@@ -32,6 +39,42 @@ def _ensure_column(conn, table, column, definition):
     cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
     if column not in cols:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def mapa_project_por_team_valido(conn):
+    rows = conn.execute("""
+        SELECT project_id, team_id_at
+        FROM map_equipo_proyecto
+        WHERE team_id_at IS NOT NULL
+          AND TRIM(team_id_at) <> ''
+          AND project_key_rpt IS NOT NULL
+          AND TRIM(project_key_rpt) <> ''
+          AND COALESCE(activo, 1) = 1
+        ORDER BY project_id
+    """).fetchall()
+    mapping = {}
+    for project_id, team_id in rows:
+        key = str(team_id or "").strip()
+        if key and key not in mapping:
+            mapping[key] = project_id
+    return mapping
+
+
+def append_row_at_con_team_fallback(rows, row, counters, source, team_name, item):
+    if not row.get("project_id"):
+        team_id = str(row.get("team_id_at") or "").strip()
+        fallback = getattr(etl_runner_v2, "_TEAM_PROJECT_FALLBACK", {}).get(team_id)
+        if fallback:
+            row["project_id"] = fallback
+            if not row.get("project_key_at"):
+                row["project_key_at"] = f"TEAM:{team_id}"
+    return _original_at_append_row(rows, row, counters, source, team_name, item)
+
+
+def extraer_at_workload_v4(at, conn, equipos, modo, full=False):
+    etl_runner_v2._TEAM_PROJECT_FALLBACK = mapa_project_por_team_valido(conn)
+    etl_runner_v2._append_row = append_row_at_con_team_fallback
+    return _original_extraer_at_workload(at, conn, equipos, modo, full=full)
 
 
 def asegurar_tablas_app(conn):
@@ -223,6 +266,7 @@ def validar_modelo_v4(conn):
 
 
 etl.crear_tablas = crear_tablas_v4
+etl.extraer_at_workload = extraer_at_workload_v4
 etl.refrescar_vistas = refrescar_vistas_v4
 etl.validar_modelo = validar_modelo_v4
 
