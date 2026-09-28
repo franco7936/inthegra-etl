@@ -5,13 +5,6 @@ import { parseSession } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 const REQUIRED_VIEW = 'VW_NOVEDADES_LABORALES';
-const DEMO_ROWS = [
-  { fecha: '2026-09-02', person_id: 1, persona: 'Luna Borsotti', project_id: 1, equipo: 'Business', event_type: 'day_off', horas: 8, registros: 1 },
-  { fecha: '2026-09-05', person_id: 2, persona: 'Nicolas Gomez', project_id: 2, equipo: 'SaaS', event_type: 'holiday', horas: 8, registros: 1 },
-  { fecha: '2026-09-09', person_id: 3, persona: 'Camila Perez', project_id: 2, equipo: 'SaaS', event_type: 'overtime', horas: 3.5, registros: 1 },
-  { fecha: '2026-09-12', person_id: 1, persona: 'Luna Borsotti', project_id: 1, equipo: 'Business', event_type: 'overtime', horas: 2, registros: 1 },
-  { fecha: '2026-09-18', person_id: 4, persona: 'Martin Lopez', project_id: 3, equipo: 'Custom', event_type: 'day_off', horas: 8, registros: 1 },
-];
 const EVENT_LABELS = { day_off: 'Day off', holiday: 'Vacaciones', overtime: 'Horas extras' };
 
 function defaultDates() {
@@ -53,7 +46,7 @@ async function viewExists(db) {
 }
 
 function normalizeRow(row) {
-  return { fecha: row.fecha, person_id: row.person_id, persona: row.persona || 'Sin persona', project_id: row.project_id, equipo: row.equipo || row.proyecto || 'Sin equipo', event_type: row.event_type, event_label: row.event_label || EVENT_LABELS[row.event_type] || row.event_type, horas: Number(row.horas || 0), registros: Number(row.registros || 0) };
+  return { fecha: row.fecha, person_id: row.person_id, persona: row.persona || 'Sin persona', project_id: row.project_id, equipo: row.equipo || row.proyecto || 'Sin equipo', event_type: row.event_type, event_label: row.event_label || EVENT_LABELS[row.event_type] || row.event_type, horas: Number(row.horas || 0), registros: Number(row.registros || 0), fuentes: row.fuentes || '' };
 }
 
 function groupBy(rows, keyFn) {
@@ -80,7 +73,7 @@ function buildPayload(filters, rows, modelReady, setupMessage = '') {
   const byPerson = Array.from(byPersonMap.entries()).map(([key, value]) => { const [person_id, persona, equipo] = key.split('|'); return { person_id, persona, equipo, ...value, horas: Number(value.horas.toFixed(2)) }; }).sort((a, b) => b.horas - a.horas);
   const byTeam = Array.from(byTeamMap.entries()).map(([key, value]) => { const [project_id, equipo] = key.split('|'); return { project_id, equipo, ...value, horas: Number(value.horas.toFixed(2)) }; }).sort((a, b) => b.horas - a.horas);
   const byType = Array.from(byTypeMap.entries()).map(([event_type, value]) => ({ event_type, event_label: EVENT_LABELS[event_type] || event_type, ...value, horas: Number(value.horas.toFixed(2)) })).sort((a, b) => b.horas - a.horas);
-  return { ok: true, modelReady, demo: !modelReady, setupMessage, filters, summary: { horas: Number(totalHoras.toFixed(2)), registros: normalized.reduce((sum, row) => sum + row.registros, 0), personas: uniquePeople.size, equipos: uniqueTeams.size }, byType, byPerson, byTeam, detail: normalized.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).slice(0, 500), filtersData: { projects: Array.from(new Map(normalized.map((row) => [row.project_id, { project_id: row.project_id, equipo: row.equipo }])).values()).filter((row) => row.project_id), eventTypes: Object.entries(EVENT_LABELS).map(([event_type, label]) => ({ event_type, label })) } };
+  return { ok: true, modelReady, demo: false, setupMessage, filters, summary: { horas: Number(totalHoras.toFixed(2)), registros: normalized.reduce((sum, row) => sum + row.registros, 0), personas: uniquePeople.size, equipos: uniqueTeams.size }, byType, byPerson, byTeam, detail: normalized.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).slice(0, 500), filtersData: { projects: Array.from(new Map(normalized.map((row) => [row.project_id, { project_id: row.project_id, equipo: row.equipo }])).values()).filter((row) => row.project_id), eventTypes: Object.entries(EVENT_LABELS).map(([event_type, label]) => ({ event_type, label })) } };
 }
 
 export async function GET(request) {
@@ -91,12 +84,11 @@ export async function GET(request) {
     const ready = await viewExists(db);
 
     if (!ready) {
-      const demoRows = DEMO_ROWS.filter((row) => filters.projectId === '__none__' ? false : (!filters.projectId || Number(row.project_id) === Number(filters.projectId)));
-      return NextResponse.json(buildPayload(filters, demoRows, false, `Falta la vista ${REQUIRED_VIEW}. La pantalla usa datos de referencia hasta crear la vista SQL.`));
+      return NextResponse.json(buildPayload(filters, [], false, `Falta la vista ${REQUIRED_VIEW}. Ejecutar el ETL principal para crear la vista con datos reales.`));
     }
 
     const { where, args } = buildWhere(filters);
-    const rows = await queryRows(db, `SELECT fecha, person_id, persona, project_id, equipo, event_type, event_label, ROUND(SUM(COALESCE(horas, 0)), 2) AS horas, SUM(COALESCE(registros, 1)) AS registros FROM VW_NOVEDADES_LABORALES WHERE ${where} GROUP BY fecha, person_id, persona, project_id, equipo, event_type, event_label ORDER BY fecha DESC, persona LIMIT 1000`, args);
+    const rows = await queryRows(db, `SELECT fecha, person_id, persona, project_id, equipo, event_type, event_label, fuentes, ROUND(SUM(COALESCE(horas, 0)), 2) AS horas, SUM(COALESCE(registros, 1)) AS registros FROM VW_NOVEDADES_LABORALES WHERE ${where} GROUP BY fecha, person_id, persona, project_id, equipo, event_type, event_label, fuentes ORDER BY fecha DESC, persona LIMIT 1000`, args);
     return NextResponse.json(buildPayload(filters, rows, true));
   } catch (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
