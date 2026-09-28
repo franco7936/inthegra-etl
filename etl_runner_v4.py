@@ -8,9 +8,11 @@ Mantiene los parches de v3 sobre at_workload y agrega:
 - app_report_permissions queda solo por compatibilidad con datos anteriores.
 - Vistas de horas con desglose horas_at / horas_pgi / total.
 
-Tambien corrige ActivityTimeline para no perder event_type sin issue Jira:
-si un evento AT no trae projectKey/issueKey, se usa como respaldo el team_id_at
-siempre que ese equipo este mapeado a un proyecto Jira activo.
+ActivityTimeline:
+- Si un evento AT no trae projectKey/issueKey, se usa como respaldo el team_id_at
+  cuando ese equipo esta mapeado a un proyecto Jira activo.
+- Si aun asi no tiene proyecto, se conserva como 'Sin proyecto' para revision del admin.
+- Los usuarios no admin no ven esas horas porque sus reportes quedan filtrados por project_id.
 """
 
 import etl
@@ -22,7 +24,6 @@ _original_crear_tablas = etl.crear_tablas
 _original_refrescar_vistas = etl.refrescar_vistas
 _original_validar_modelo = etl.validar_modelo
 _original_extraer_at_workload = etl.extraer_at_workload
-_original_at_append_row = etl_runner_v2._append_row
 
 ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"  # admin123
 REPORT_KEYS = [
@@ -60,7 +61,7 @@ def mapa_project_por_team_valido(conn):
     return mapping
 
 
-def append_row_at_con_team_fallback(rows, row, counters, source, team_name, item):
+def append_row_at_permite_sin_proyecto(rows, row, counters, source, team_name, item):
     if not row.get("project_id"):
         team_id = str(row.get("team_id_at") or "").strip()
         fallback = getattr(etl_runner_v2, "_TEAM_PROJECT_FALLBACK", {}).get(team_id)
@@ -68,12 +69,80 @@ def append_row_at_con_team_fallback(rows, row, counters, source, team_name, item
             row["project_id"] = fallback
             if not row.get("project_key_at"):
                 row["project_key_at"] = f"TEAM:{team_id}"
-    return _original_at_append_row(rows, row, counters, source, team_name, item)
+
+    if not row.get("person_id"):
+        counters["sin_persona"] += 1
+        counters["omitidos"] += 1
+        etl_runner_v2._log_missing_identity(source, team_name, item)
+        return False
+
+    if not row.get("project_id"):
+        counters["sin_proyecto"] += 1
+        etl.log.warning(
+            "AT %s sin proyecto asociado; se conserva para revision admin | team=%s issue=%s type=%s summary=%s",
+            source,
+            team_name,
+            item.get("issueKey", ""),
+            item.get("issueType", item.get("recordType", "")),
+            (item.get("summary") or item.get("comment") or "")[:120],
+        )
+    rows.append(row)
+    return True
+
+
+def limpiar_at_workload_v4(conn, start=None, end=None):
+    date_clause = ""
+    params = []
+    if start and end:
+        date_clause = "AND planned_start >= ? AND planned_start <= ?"
+        params = [start, end]
+
+    row = conn.execute(f"""
+        SELECT COUNT(*)
+        FROM at_workload
+        WHERE (
+            person_id IS NULL
+            OR (
+                project_id IS NOT NULL
+                AND project_id NOT IN (
+                    SELECT project_id
+                    FROM map_equipo_proyecto
+                    WHERE project_key_rpt IS NOT NULL
+                      AND TRIM(project_key_rpt) <> ''
+                      AND COALESCE(activo, 1) = 1
+                )
+            )
+        )
+        {date_clause}
+    """, params).fetchone()
+    count = int(row[0] or 0) if row else 0
+    conn.execute(f"""
+        DELETE FROM at_workload
+        WHERE (
+            person_id IS NULL
+            OR (
+                project_id IS NOT NULL
+                AND project_id NOT IN (
+                    SELECT project_id
+                    FROM map_equipo_proyecto
+                    WHERE project_key_rpt IS NOT NULL
+                      AND TRIM(project_key_rpt) <> ''
+                      AND COALESCE(activo, 1) = 1
+                )
+            )
+        )
+        {date_clause}
+    """, params)
+    conn.commit()
+    if count:
+        etl.log.warning("at_workload: %s filas sin persona o con proyecto invalido eliminadas", count)
 
 
 def extraer_at_workload_v4(at, conn, equipos, modo, full=False):
     etl_runner_v2._TEAM_PROJECT_FALLBACK = mapa_project_por_team_valido(conn)
-    etl_runner_v2._append_row = append_row_at_con_team_fallback
+    etl_runner_v2._append_row = append_row_at_permite_sin_proyecto
+    etl_runner_v2.limpiar_at_workload_invalido = limpiar_at_workload_v4
+    etl_runner_v2.limpiar_at_workload_sin_persona = limpiar_at_workload_v4
     return _original_extraer_at_workload(at, conn, equipos, modo, full=full)
 
 
@@ -184,7 +253,7 @@ def refrescar_vistas_v4(conn):
         FROM at_workload w
         LEFT JOIN map_personas mp ON mp.person_id = w.person_id
         LEFT JOIN map_equipo_proyecto me ON me.project_id = w.project_id
-        WHERE w.person_id IS NOT NULL AND w.project_id IS NOT NULL
+        WHERE w.person_id IS NOT NULL
 
         UNION ALL
 
