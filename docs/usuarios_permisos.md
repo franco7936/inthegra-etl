@@ -33,6 +33,24 @@ Si un usuario entra a cualquier URL del portal sin estar logueado, se redirige a
 
 Despues de iniciar sesion, la home muestra solo los reportes permitidos para ese usuario.
 
+## Navegacion global
+
+La barra superior se renderiza desde `web/components/AppTopbar.js` y aparece en todas las pantallas con sesion activa.
+
+Los reportes se agrupan en desplegables:
+
+- `Operativos`: reporte de horas, novedades laborales y status semanal.
+- `Estrategicos`: inversion estrategica, entrega y calidad de servicio.
+- `Calidad`: calidad y performance operativa.
+
+La barra tambien incluye un perfil circular. El desplegable del perfil muestra:
+
+- Usuario.
+- Rol.
+- Accion `Cerrar sesion`.
+
+Al cerrar sesion se elimina la cookie y se redirige a `/`. Como el portal exige login, si no hay sesion activa el middleware vuelve a solicitar autenticacion.
+
 ## Usuario inicial
 
 El modelo crea un usuario inicial cuando se ejecuta el ETL o cuando se usa el login por primera vez:
