@@ -30,6 +30,15 @@ Vercel / Next.js / web/
 - La web consulta Turso desde API routes del lado servidor, sin exponer `TURSO_TOKEN` en el navegador.
 - `docs/` queda como version estatica anterior publicada por GitHub Pages, pero el camino principal pasa a ser `web/`.
 
+## Criterio de versionado
+
+El ETL debe mantenerse sobre archivos vigentes, no creando copias con sufijos de version.
+
+- El runner vigente es `etl_runner.py`.
+- Los cambios evolutivos se documentan en commits de Git.
+- No crear archivos como `etl_runner_v2.py`, `etl_runner_v3.py`, `etl_runner_final.py` o similares.
+- Si una logica deja de usarse, se limpia del archivo vigente o se elimina el archivo obsoleto.
+
 ## Modelo vigente
 
 Tablas principales:
