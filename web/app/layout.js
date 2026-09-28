@@ -1,4 +1,5 @@
 import './globals.css';
+import AppTopbar from '@/components/AppTopbar';
 
 export const metadata = {
   title: 'Inthegra Reports',
@@ -8,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body><AppTopbar />{children}</body>
     </html>
   );
 }
