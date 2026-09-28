@@ -3,7 +3,8 @@ Runner v4: extiende el modelo con carga manual PGI y usuarios de la web.
 
 Mantiene los parches de v3 sobre at_workload y agrega:
 - pgi_workload para horas manuales no provenientes de Jira/ActivityTimeline.
-- app_users y app_report_permissions para login y permisos.
+- app_users, app_roles y app_role_permissions para login y permisos por rol.
+- app_report_permissions queda solo por compatibilidad con datos anteriores.
 - Vistas de horas con desglose horas_at / horas_pgi / total.
 """
 
@@ -16,6 +17,14 @@ _original_refrescar_vistas = etl.refrescar_vistas
 _original_validar_modelo = etl.validar_modelo
 
 ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"  # admin123
+REPORT_KEYS = [
+    "horas",
+    "novedades-laborales",
+    "status-semanal",
+    "inversion-estrategica",
+    "entrega-calidad",
+    "calidad-performance",
+]
 
 
 def asegurar_tablas_app(conn):
@@ -30,6 +39,21 @@ def asegurar_tablas_app(conn):
             creado_por TEXT,
             activo INTEGER DEFAULT 1,
             fecha_carga TEXT
+        );
+        CREATE TABLE IF NOT EXISTS app_roles (
+            role_key TEXT PRIMARY KEY,
+            label TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0,
+            enabled INTEGER DEFAULT 1,
+            fecha_carga TEXT
+        );
+        CREATE TABLE IF NOT EXISTS app_role_permissions (
+            permission_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role_key TEXT NOT NULL,
+            report_key TEXT NOT NULL,
+            can_view INTEGER DEFAULT 1,
+            fecha_carga TEXT,
+            UNIQUE(role_key, report_key)
         );
         CREATE TABLE IF NOT EXISTS app_users (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,9 +71,27 @@ def asegurar_tablas_app(conn):
             fecha_carga TEXT,
             UNIQUE(username, report_key)
         );
+        INSERT OR IGNORE INTO app_roles (role_key, label, is_admin, enabled, fecha_carga)
+        VALUES ('admin', 'Administrador', 1, 1, datetime('now'));
+        INSERT OR IGNORE INTO app_roles (role_key, label, is_admin, enabled, fecha_carga)
+        VALUES ('viewer', 'Usuario operativo', 0, 1, datetime('now'));
         INSERT OR IGNORE INTO app_users (username, password_hash, role, enabled, fecha_carga)
         VALUES ('admin', '{ADMIN_PASSWORD_HASH}', 'admin', 1, datetime('now'));
     """)
+    for report_key in REPORT_KEYS:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO app_role_permissions (role_key, report_key, can_view, fecha_carga)
+            VALUES ('admin', ?, 1, datetime('now'))
+            """,
+            (report_key,),
+        )
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO app_role_permissions (role_key, report_key, can_view, fecha_carga)
+        VALUES ('viewer', 'horas', 1, datetime('now'))
+        """
+    )
     conn.commit()
 
 
@@ -161,7 +203,7 @@ def refrescar_vistas_v4(conn):
 def validar_modelo_v4(conn):
     _original_validar_modelo(conn)
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_schema WHERE type='table'").fetchall()}
-    required = {"pgi_workload", "app_users", "app_report_permissions"}
+    required = {"pgi_workload", "app_users", "app_roles", "app_role_permissions", "app_report_permissions"}
     missing = required - tables
     if missing:
         raise RuntimeError("Faltan tablas v4: " + ", ".join(sorted(missing)))
