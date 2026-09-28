@@ -4,6 +4,7 @@ Runner v4: extiende el modelo con carga manual PGI y usuarios de la web.
 Mantiene los parches de v3 sobre at_workload y agrega:
 - pgi_workload para horas manuales no provenientes de Jira/ActivityTimeline.
 - app_users, app_roles y app_role_permissions para login y permisos por rol.
+- app_users.project_id asocia cada usuario no administrador a un equipo/proyecto.
 - app_report_permissions queda solo por compatibilidad con datos anteriores.
 - Vistas de horas con desglose horas_at / horas_pgi / total.
 """
@@ -25,6 +26,12 @@ REPORT_KEYS = [
     "entrega-calidad",
     "calidad-performance",
 ]
+
+
+def _ensure_column(conn, table, column, definition):
+    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def asegurar_tablas_app(conn):
@@ -60,6 +67,7 @@ def asegurar_tablas_app(conn):
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'viewer',
+            project_id INTEGER,
             enabled INTEGER DEFAULT 1,
             fecha_carga TEXT
         );
@@ -78,6 +86,7 @@ def asegurar_tablas_app(conn):
         INSERT OR IGNORE INTO app_users (username, password_hash, role, enabled, fecha_carga)
         VALUES ('admin', '{ADMIN_PASSWORD_HASH}', 'admin', 1, datetime('now'));
     """)
+    _ensure_column(conn, "app_users", "project_id", "INTEGER")
     for report_key in REPORT_KEYS:
         conn.execute(
             """
@@ -207,6 +216,9 @@ def validar_modelo_v4(conn):
     missing = required - tables
     if missing:
         raise RuntimeError("Faltan tablas v4: " + ", ".join(sorted(missing)))
+    app_user_cols = {row[1] for row in conn.execute("PRAGMA table_info(app_users)").fetchall()}
+    if "project_id" not in app_user_cols:
+        raise RuntimeError("Falta columna app_users.project_id")
     etl.log.info("Modelo v4 validado")
 
 
