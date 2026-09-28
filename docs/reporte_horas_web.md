@@ -27,7 +27,7 @@ La vista `VW_REPORTE_HORAS_DETALLE` expone:
 
 ## PGI Log
 
-La pantalla incluye el boton `PGI Log`.
+La pantalla incluye el boton `PGI Log` como accion principal a la derecha de `Exportar Excel`.
 
 Al abrirlo se muestra un popup para cargar:
 
@@ -57,8 +57,6 @@ to = ultimo dia del mes seleccionado
 
 La API sigue recibiendo `from` y `to` para mantener estable la consulta contra Turso.
 
-El filtro de persona usa `person_id` desde `VW_REPORTE_HORAS_DETALLE` y lista las personas disponibles para el mes seleccionado.
-
 ## Indicadores principales
 
 La pantalla muestra:
@@ -70,8 +68,6 @@ La pantalla muestra:
 - Porcentaje de cobertura contra el estimado.
 - Registros incluidos en el filtro.
 
-El texto del estimado muestra el mes seleccionado, la cantidad de personas consideradas y los dias habiles calculados.
-
 ## Cumplimiento por persona
 
 En la vista `Personas`, la grilla agrupa por persona y muestra una fila por cada proyecto donde esa persona tuvo horas.
@@ -81,30 +77,28 @@ Debajo del nombre de cada persona se muestra:
 - Ultima fecha de carga de horas dentro del mes filtrado.
 - Total de horas cargadas por esa persona, incluyendo AT y PGI.
 
-Para cada persona se calcula:
-
-```text
-horas esperadas = 8 * dias habiles del mes seleccionado
-cumplimiento = total horas cargadas por persona / horas esperadas
-```
-
 Estados visuales:
 
 - `Alerta` / rojo: menor a 80% del estimado.
 - `Revisar` / naranja: desde 80% y menor a 100%.
 - `OK` / verde: igual o mayor a 100%.
 
-La franja izquierda de cada persona usa el mismo color del estado.
-
 ## Exportacion a Excel
 
 La pantalla incluye el boton `Exportar Excel`.
 
-La exportacion toma exactamente la vista filtrada que esta viendo el usuario:
+La exportacion toma exactamente la vista filtrada que esta viendo el usuario e incluye:
 
-- Si esta seleccionada la vista `Personas`, exporta la matriz por persona/proyecto/tipo de actividad e incluye ultima fecha de carga, columna PGI, total por persona, estimado por persona, porcentaje de cumplimiento y estado.
-- Si esta seleccionada la vista `Proyectos`, exporta la matriz por proyecto/tipo de actividad con columna PGI.
-- El archivo incluye el mes aplicado, el rango `from/to`, los dias habiles y el total estimado de horas.
+- Filtros aplicados.
+- Dias habiles.
+- Total estimado de horas.
+- Resumen de horas AT, horas PGI y horas totales.
+- Matriz por persona/proyecto o por proyecto, segun la vista seleccionada.
+- Columnas de tipos de actividad.
+- Columna `Total AT`.
+- Columna `PGI`.
+- Columna `Total fila`.
+- Cumplimiento por persona cuando la vista es `Personas`.
 
 El archivo se genera en el navegador como `.xls` compatible con Excel, sin agregar dependencias al proyecto Next.js.
 
