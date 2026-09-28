@@ -26,18 +26,30 @@ async function ensureAuthTables(db) {
   }
 }
 
+async function getAllowedReports(db, user) {
+  if (user.role === 'admin') return REPORTS.map((report) => report.key);
+  const rows = await queryRows(db, `
+    SELECT report_key
+    FROM app_report_permissions
+    WHERE username = ? AND can_view = 1
+    ORDER BY report_key
+  `, [user.username]);
+  return rows.map((row) => row.report_key);
+}
+
 export async function POST(request) {
   try {
     const { username, password } = await request.json();
     const db = getTursoClient();
     await ensureAuthTables(db);
-    const users = await queryRows(db, `SELECT username, password_hash, role, enabled FROM app_users WHERE username = ?`, [String(username || '').trim()]);
+    const users = await queryRows(db, `SELECT username, password_hash, role, enabled FROM app_users WHERE username = ?`, [String(username || '').trim().toLowerCase()]);
     const user = users[0];
     if (!user || Number(user.enabled) !== 1 || user.password_hash !== hashPassword(password)) {
       return NextResponse.json({ ok: false, error: 'Usuario o contrasena incorrectos.' }, { status: 401 });
     }
-    const response = NextResponse.json({ ok: true, user: { username: user.username, role: user.role } });
-    response.cookies.set('inthegra_session', sessionValue(user), { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60 * 60 * 12 });
+    const userSession = { ...user, reports: await getAllowedReports(db, user) };
+    const response = NextResponse.json({ ok: true, user: { username: user.username, role: user.role, reports: userSession.reports } });
+    response.cookies.set('inthegra_session', sessionValue(userSession), { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60 * 60 * 12 });
     return response;
   } catch (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
