@@ -94,7 +94,7 @@ La pantalla muestra:
 
 - Resumen de horas, novedades, personas y equipos.
 - Dias de novedades y dias habiles del periodo filtrado.
-- Distribucion por tipo.
+- Distribucion por tipo. Siempre muestra `day_off`, `holiday`, `sick_leave` y `vacation`, aunque alguna categoria no tenga datos en el mes filtrado.
 - Agrupacion por persona.
 - Agrupacion por equipo.
 - Detalle por fecha/persona/equipo/tipo.

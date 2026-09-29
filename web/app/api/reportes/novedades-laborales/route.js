@@ -132,7 +132,9 @@ function buildPayload(filters, rows, modelReady, setupMessage = '') {
   const enrich = (value) => ({ ...value, dias: round2(value.dias), horas: round2(value.horas), day_off: round2(value.day_off), holiday: round2(value.holiday), sick_leave: round2(value.sick_leave), vacation: round2(value.vacation), day_off_dias: round2(value.day_off_dias), holiday_dias: round2(value.holiday_dias), sick_leave_dias: round2(value.sick_leave_dias), vacation_dias: round2(value.vacation_dias) });
   const byPerson = Array.from(byPersonMap.entries()).map(([key, value]) => { const [person_id, persona, equipo] = key.split('|'); return { person_id, persona, equipo, ...enrich(value) }; }).sort((a, b) => b.dias - a.dias);
   const byTeam = Array.from(byTeamMap.entries()).map(([key, value]) => { const [project_id, equipo] = key.split('|'); return { project_id, equipo, ...enrich(value) }; }).sort((a, b) => b.dias - a.dias);
-  const byType = Array.from(byTypeMap.entries()).map(([event_type, value]) => ({ event_type, event_label: EVENT_LABELS[event_type] || event_type, ...enrich(value) })).sort((a, b) => b.dias - a.dias);
+  const byType = Object.entries(EVENT_LABELS)
+    .map(([event_type, event_label]) => ({ event_type, event_label, ...enrich(byTypeMap.get(event_type) || {}) }))
+    .sort((a, b) => b.dias - a.dias || String(a.event_label).localeCompare(String(b.event_label), 'es'));
   return {
     ok: true,
     modelReady,
