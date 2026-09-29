@@ -75,6 +75,8 @@ Definiciones SQL versionadas:
 | --- | --- |
 | `sql/vw_novedades_laborales.sql` | Definicion ejecutable de `VW_NOVEDADES_LABORALES`. `etl_runner.py` la aplica al refrescar vistas. |
 
+En el reporte de horas, `event_type` se normaliza para mantener columnas consistentes: `booking`, `day_off`, `holiday`, `jira_issue`, `placeholder`, `sick_leave`, `vacation` y `worklog`.
+
 ## Web dinamica
 
 La app esta en `web/`.

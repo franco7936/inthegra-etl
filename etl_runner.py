@@ -675,7 +675,21 @@ def refrescar_vistas_seguro(conn):
         SELECT 'AT-' || w.workload_id AS registro_id, 'AT' AS fuente, w.workload_id, NULL AS pgi_id,
             w.person_id, COALESCE(mp.full_name_at, mp.user_name_rpt, 'Sin persona') AS persona,
             w.project_id, COALESCE(me.nombre_rpt, me.nombre_at, 'Sin proyecto') AS proyecto,
-            me.project_key_rpt, me.team_id_at, w.issue_key, w.event_type, w.summary,
+            me.project_key_rpt, me.team_id_at, w.issue_key,
+            CASE LOWER(TRIM(COALESCE(w.event_type, '')))
+                WHEN 'booking' THEN 'booking'
+                WHEN 'day_off' THEN 'day_off'
+                WHEN 'holiday' THEN 'holiday'
+                WHEN 'jira_issue' THEN 'jira_issue'
+                WHEN 'jira issue' THEN 'jira_issue'
+                WHEN 'placeholder' THEN 'placeholder'
+                WHEN 'sick_leave' THEN 'sick_leave'
+                WHEN 'sick leave' THEN 'sick_leave'
+                WHEN 'vacation' THEN 'vacation'
+                WHEN 'worklog' THEN 'worklog'
+                ELSE LOWER(TRIM(COALESCE(w.event_type, 'sin_tipo')))
+            END AS event_type,
+            w.summary,
             date(w.planned_start) AS fecha, w.planned_start, w.planned_end, w.orig_estimate, w.rem_estimate,
             ROUND(COALESCE(w.tiempo_empleado, 0), 2) AS horas_at, 0.0 AS horas_pgi,
             ROUND(COALESCE(w.tiempo_empleado, 0), 2) AS tiempo_empleado, w.fecha_carga

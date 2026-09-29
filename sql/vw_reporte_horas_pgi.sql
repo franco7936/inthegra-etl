@@ -15,7 +15,19 @@ SELECT
     me.project_key_rpt,
     me.team_id_at,
     w.issue_key,
-    w.event_type,
+    CASE LOWER(TRIM(COALESCE(w.event_type, '')))
+        WHEN 'booking' THEN 'booking'
+        WHEN 'day_off' THEN 'day_off'
+        WHEN 'holiday' THEN 'holiday'
+        WHEN 'jira_issue' THEN 'jira_issue'
+        WHEN 'jira issue' THEN 'jira_issue'
+        WHEN 'placeholder' THEN 'placeholder'
+        WHEN 'sick_leave' THEN 'sick_leave'
+        WHEN 'sick leave' THEN 'sick_leave'
+        WHEN 'vacation' THEN 'vacation'
+        WHEN 'worklog' THEN 'worklog'
+        ELSE LOWER(TRIM(COALESCE(w.event_type, 'sin_tipo')))
+    END AS event_type,
     w.summary,
     date(w.planned_start) AS fecha,
     w.planned_start,

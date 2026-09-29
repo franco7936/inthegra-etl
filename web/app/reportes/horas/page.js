@@ -54,6 +54,13 @@ function periodLabel(from, to) {
 function formatHours(value) { return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(Number(value || 0)); }
 function formatPercent(value) { if (value === null || value === undefined || Number.isNaN(Number(value))) return '-'; return `${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(value))}%`; }
 function formatDateDisplay(value) { const date = parseDate(String(value || '').slice(0, 10)); if (!date) return 'Sin carga'; return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(date); }
+const FIXED_EVENT_TYPES = ['booking', 'day_off', 'holiday', 'jira_issue', 'placeholder', 'sick_leave', 'vacation', 'worklog'];
+function normalizeEventType(value) {
+  const normalized = String(value || 'sin_tipo').trim().toLowerCase().replace(/\s+/g, '_');
+  if (normalized === 'jira_issue') return 'jira_issue';
+  if (normalized === 'sick_leave') return 'sick_leave';
+  return normalized;
+}
 function labelType(value) { return String(value || 'Sin tipo').replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }
 
 function buildMatrix(rows, keyFields) {
@@ -62,7 +69,7 @@ function buildMatrix(rows, keyFields) {
     const key = keyFields.map((field) => row[field] || '').join('||');
     const current = map.get(key) || { total: 0, atTotal: 0, pgiTotal: 0, registros: 0, byType: {}, latestDate: '' };
     keyFields.forEach((field) => { current[field] = row[field] || 'Sin dato'; });
-    const type = row.event_type || 'Sin tipo';
+    const type = normalizeEventType(row.event_type);
     const hours = Number(row.horas || 0);
     const pgiHours = Number(row.horas_pgi || 0);
     const atHours = Number(row.horas_at || 0);
@@ -80,8 +87,9 @@ function buildMatrix(rows, keyFields) {
 
 function getMatrixData(rows, mode) {
   const eventTypesMap = new Map();
-  rows.forEach((row) => { const type = row.event_type || 'Sin tipo'; if (type === 'PGI') return; eventTypesMap.set(type, (eventTypesMap.get(type) || 0) + Number(row.horas || 0)); });
-  const eventTypes = [...eventTypesMap.entries()].sort((a, b) => b[1] - a[1]).map(([type]) => type);
+  rows.forEach((row) => { const type = normalizeEventType(row.event_type); if (type === 'pgi') return; eventTypesMap.set(type, (eventTypesMap.get(type) || 0) + Number(row.horas || 0)); });
+  const dynamicTypes = [...eventTypesMap.entries()].sort((a, b) => b[1] - a[1]).map(([type]) => type).filter((type) => !FIXED_EVENT_TYPES.includes(type));
+  const eventTypes = [...FIXED_EVENT_TYPES.filter((type) => eventTypesMap.has(type)), ...dynamicTypes];
   const matrix = buildMatrix(rows, mode === 'persona' ? ['persona', 'proyecto'] : ['proyecto']);
   return { eventTypes, matrix };
 }
