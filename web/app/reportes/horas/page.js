@@ -280,7 +280,7 @@ export default function ReporteHorasPage() {
 
       <style jsx global>{`
         .hoursReportShell{padding-bottom:32px}
-        .hoursReportShell>section{width:min(1560px,calc(100% - 48px))!important;max-width:none;margin-left:auto!important;margin-right:auto!important}
+        .hoursReportShell>section{width:calc(100% - 24px)!important;max-width:none;margin-left:auto!important;margin-right:auto!important}
         .hoursReportShell .pageHeader{padding:30px 0 18px!important}
         .hoursReportShell .pageHeader h1{font-size:clamp(32px,3.2vw,46px)!important}
         .hoursReportShell .pageHeader p{max-width:980px}
@@ -294,16 +294,17 @@ export default function ReporteHorasPage() {
         .estimatedHoursCard{border-color:#ffb074;background:#fff7f0}
         .hoursReportShell .panelHeader{padding:16px!important}
         .hoursReportShell .hoursTableWrap{overflow-x:auto}
-        .hoursReportShell .hoursMatrixTable{width:100%;min-width:1180px!important;table-layout:fixed!important}
-        .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 8px!important;font-size:12px!important;line-height:1.25!important}
-        .hoursReportShell .hoursMatrixTable th{letter-spacing:0!important;white-space:normal!important}
-        .hoursReportShell .hoursMatrixTable th.number,.hoursReportShell .hoursMatrixTable td.number{width:62px!important}
-        .hoursReportShell .hoursMatrixTable th:first-child{width:172px!important}
-        .hoursReportShell .hoursMatrixTable th:nth-child(2){width:160px!important}
-        .hoursReportShell .personGroupCell{width:172px!important;min-width:0!important;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}
+        .hoursReportShell .hoursMatrixTable{width:100%;min-width:1540px!important;table-layout:fixed!important}
+        .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 10px!important;font-size:12px!important;line-height:1.25!important}
+        .hoursReportShell .hoursMatrixTable th{letter-spacing:0!important;white-space:normal!important;overflow-wrap:normal!important;font-size:11px!important}
+        .hoursReportShell .hoursMatrixTable th.number,.hoursReportShell .hoursMatrixTable td.number{width:82px!important}
+        .hoursReportShell .hoursMatrixTable th:first-child{width:210px!important}
+        .hoursReportShell .hoursMatrixTable th:nth-child(2){width:180px!important}
+        .hoursReportShell .hoursMatrixTable th:last-child,.hoursReportShell .hoursMatrixTable td:last-child{width:92px!important}
+        .hoursReportShell .personGroupCell{width:210px!important;min-width:0!important;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}
         .personGroupCell strong,.personGroupCell small,.complianceCell small{display:block}
         .personGroupCell small,.complianceCell small{margin-top:5px;color:var(--muted);font-size:11px;font-weight:700}
-        .hoursReportShell .complianceCell{width:120px!important;min-width:0!important;vertical-align:top}
+        .hoursReportShell .complianceCell{width:160px!important;min-width:0!important;vertical-align:top}
         .hoursCompliance{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}
         .hoursCompliance.ok{background:#eef9f0;color:#237a35}
         .hoursCompliance.warning{background:#fff4e8;color:#b85c00}

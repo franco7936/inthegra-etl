@@ -26,6 +26,8 @@ La vista `VW_REPORTE_HORAS_DETALLE` expone:
 - `tiempo_empleado`: total usado por el reporte, calculado como AT + PGI segun la fila.
 - `activity_detail_at`: detalle operativo del evento. Para `booking`, el ETL lo deriva del texto posterior al separador `|` dentro de `summary`.
 
+Para eventos de ausencia provenientes de ActivityTimeline (`day_off`, `holiday`, `sick_leave`, `vacation`), si la API no informa horas, la vista calcula 8 horas por cada dia laborable del rango. El `planned_end` se interpreta como fin exclusivo: del 28/09 al 29/09 equivale a 1 dia.
+
 ## PGI Log
 
 La pantalla incluye el boton `PGI Log` como accion principal a la derecha de `Exportar Excel`.
