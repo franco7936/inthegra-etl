@@ -62,7 +62,8 @@ function downloadExcel({ data, filters, viewMode, rows, filterLabels }) {
   ];
 
   const summaryRows = [
-    ['Dias laborales', Number(data?.summary?.dias || 0).toFixed(2)],
+    ['Dias de novedades', Number(data?.summary?.dias || 0).toFixed(2)],
+    ['Dias habiles del periodo', Number(data?.summary?.dias_habiles_periodo || 0).toFixed(2)],
     ['Horas registradas', Number(data?.summary?.horas || 0).toFixed(2)],
     ['Novedades', data?.summary?.registros || 0],
     ['Personas', data?.summary?.personas || 0],
@@ -156,7 +157,7 @@ export default function NovedadesLaboralesPage() {
       </section>
       {error && <div className="errorBox">{error}</div>}{modelPending && <div className="errorBox">{data.setupMessage}</div>}{data?.demo && <div className="warningBox">Vista previa con datos de referencia. Los valores reales se activan cuando exista la vista SQL.</div>}
       {!loading && !error && !modelPending && !hasReportRows && <section className="laborPlaceholder"><strong>Sin novedades para mostrar</strong><span>No encontramos day off, holiday, sick leave o vacation para {monthTitle(filters.month)} con los filtros aplicados.</span></section>}
-      <section className="laborOverview"><article><span>Dias laborales</span><strong>{formatDays(data?.summary?.dias)}</strong></article><article><span>Horas equivalentes</span><strong>{formatHours(data?.summary?.horas)}</strong></article><article><span>Personas</span><strong>{data?.summary?.personas || 0}</strong></article><article><span>Equipos</span><strong>{data?.summary?.equipos || 0}</strong></article></section>
+      <section className="laborOverview"><article><span>Dias de novedades</span><strong>{formatDays(data?.summary?.dias)}</strong></article><article><span>Dias habiles periodo</span><strong>{formatDays(data?.summary?.dias_habiles_periodo)}</strong></article><article><span>Horas equivalentes</span><strong>{formatHours(data?.summary?.horas)}</strong></article><article><span>Personas</span><strong>{data?.summary?.personas || 0}</strong></article><article><span>Equipos</span><strong>{data?.summary?.equipos || 0}</strong></article></section>
       <section className="laborCharts">
         <article className="laborPanel"><div className="panelHeader"><div><h2>Distribucion por tipo</h2><p>{monthTitle(filters.month)}</p></div></div><div className="laborTypeList">{(data?.byType || []).map((item) => <div className="laborTypeRow" key={item.event_type}><TypeBadge type={item.event_type} label={item.event_label} /><MiniBar value={item.dias} max={maxTypeHours} /><strong>{formatDays(item.dias)} · {formatHours(item.horas)}</strong></div>)}{!loading && !(data?.byType || []).length && <div className="emptyState">Sin novedades para el mes.</div>}</div></article>
         <article className="laborPanel"><div className="panelHeader"><div><h2>{viewMode === 'personas' ? 'Por persona' : 'Por equipo'}</h2><p>Agrupado por dias laborales</p></div><div className="segmented"><button className={viewMode === 'personas' ? 'active' : ''} onClick={() => setViewMode('personas')}>Personas</button><button className={viewMode === 'equipos' ? 'active' : ''} onClick={() => setViewMode('equipos')}>Equipos</button></div></div><div className="laborRankList">{rows.map((item) => <div className="laborRankRow" key={`${viewMode}-${item.person_id || item.project_id}-${item.equipo}`}><div><strong>{viewMode === 'personas' ? item.persona : item.equipo}</strong><small>{viewMode === 'personas' ? item.equipo : `${item.registros} novedades`}</small></div><MiniBar value={item.dias} max={maxRowHours} /><span>{formatDays(item.dias)} · {formatHours(item.horas)}</span></div>)}{!loading && !rows.length && <div className="emptyState">Sin datos agrupados para mostrar.</div>}</div></article>

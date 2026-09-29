@@ -7,6 +7,31 @@ export const dynamic = 'force-dynamic';
 const REQUIRED_VIEW = 'VW_NOVEDADES_LABORALES';
 const EVENT_LABELS = { day_off: 'Day off', holiday: 'Holiday', sick_leave: 'Sick leave', vacation: 'Vacation' };
 
+function parseDate(value) {
+  if (!value) return null;
+  const [year, month, day] = String(value).slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function dateKey(date) {
+  return date ? date.toISOString().slice(0, 10) : '';
+}
+
+function businessDaysBetween(from, to) {
+  const start = parseDate(from);
+  const end = parseDate(to);
+  if (!start || !end || start > end) return 0;
+  let count = 0;
+  const current = new Date(start);
+  while (current <= end) {
+    const day = current.getUTCDay();
+    if (day >= 1 && day <= 5) count += 1;
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return count;
+}
+
 function defaultDates() {
   const now = new Date();
   const to = now.toISOString().slice(0, 10);
@@ -45,19 +70,31 @@ async function viewExists(db) {
   return rows.length > 0;
 }
 
-function normalizeRow(row) {
+function normalizeRow(row, filters) {
   const eventType = row.event_type;
+  const rowStart = parseDate(row.fecha);
+  const rowEnd = parseDate(row.fecha_fin || row.fecha);
+  const filterStart = parseDate(filters.from);
+  const filterEnd = parseDate(filters.to);
+  const clippedStart = rowStart && filterStart && rowStart < filterStart ? filterStart : rowStart;
+  const clippedEnd = rowEnd && filterEnd && rowEnd > filterEnd ? filterEnd : rowEnd;
+  const clippedDays = businessDaysBetween(dateKey(clippedStart), dateKey(clippedEnd));
+  const originalDays = Number(row.dias || 0);
+  const originalHours = Number(row.horas || 0);
+  const clippedHours = clippedDays > 0
+    ? (originalDays > 0 && originalHours > 0 ? (originalHours / originalDays) * clippedDays : clippedDays * 8)
+    : 0;
   return {
-    fecha: row.fecha,
-    fecha_fin: row.fecha_fin || row.fecha,
+    fecha: dateKey(clippedStart) || row.fecha,
+    fecha_fin: dateKey(clippedEnd) || row.fecha_fin || row.fecha,
     person_id: row.person_id,
     persona: row.persona || 'Sin persona',
     project_id: row.project_id,
     equipo: row.equipo || row.proyecto || 'Sin equipo',
     event_type: eventType,
     event_label: row.event_label || EVENT_LABELS[eventType] || eventType,
-    dias: Number(row.dias || 0),
-    horas: Number(row.horas || 0),
+    dias: clippedDays,
+    horas: clippedHours,
     registros: Number(row.registros || 0),
     fuentes: row.fuentes || '',
   };
@@ -83,9 +120,10 @@ function round2(value) {
 }
 
 function buildPayload(filters, rows, modelReady, setupMessage = '') {
-  const normalized = rows.map(normalizeRow);
+  const normalized = rows.map((row) => normalizeRow(row, filters)).filter((row) => row.dias > 0 || row.horas > 0);
   const totalHoras = normalized.reduce((sum, row) => sum + row.horas, 0);
   const totalDias = normalized.reduce((sum, row) => sum + row.dias, 0);
+  const diasHabilesPeriodo = businessDaysBetween(filters.from, filters.to);
   const uniquePeople = new Set(normalized.map((row) => row.person_id).filter(Boolean));
   const uniqueTeams = new Set(normalized.map((row) => row.project_id).filter(Boolean));
   const byPersonMap = groupBy(normalized, (row) => `${row.person_id}|${row.persona}|${row.equipo}`);
@@ -101,7 +139,7 @@ function buildPayload(filters, rows, modelReady, setupMessage = '') {
     demo: false,
     setupMessage,
     filters,
-    summary: { dias: round2(totalDias), horas: round2(totalHoras), registros: normalized.reduce((sum, row) => sum + row.registros, 0), personas: uniquePeople.size, equipos: uniqueTeams.size },
+    summary: { dias: round2(totalDias), dias_habiles_periodo: diasHabilesPeriodo, horas: round2(totalHoras), registros: normalized.reduce((sum, row) => sum + row.registros, 0), personas: uniquePeople.size, equipos: uniqueTeams.size },
     byType,
     byPerson,
     byTeam,
