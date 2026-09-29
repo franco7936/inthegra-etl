@@ -66,7 +66,7 @@ export async function POST(request) {
     }
     const userSession = { ...user, reports: await getAllowedReports(db, user) };
     const response = NextResponse.json({ ok: true, user: { username: user.username, role: user.role, project_id: user.project_id, project_name: user.project_name, reports: userSession.reports } });
-    response.cookies.set('inthegra_session', sessionValue(userSession), { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60 * 60 * 12 });
+    response.cookies.set('inthegra_session', sessionValue(userSession), { httpOnly: true, sameSite: 'lax', secure: request.nextUrl.protocol === 'https:', path: '/', maxAge: 60 * 60 * 12 });
     return response;
   } catch (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

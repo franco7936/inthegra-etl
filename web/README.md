@@ -16,7 +16,7 @@ Stack base:
 - TanStack Table para evolucionar las grillas de datos.
 - Componentes propios reutilizables sobre la identidad visual de Inthegra.
 
-La primera pantalla migrada parcialmente es `Reporte de horas`: incorpora iconos en acciones, tabla con encabezado fijo y columnas finales fijas para mejorar lectura en pantallas chicas.
+La primera pantalla migrada parcialmente es `Reporte de horas`: incorpora iconos en acciones, barra superior con menus agrupados, encabezado fijo y una tabla compacta que evita superposiciones en escritorio. En pantallas chicas mantiene scroll horizontal controlado.
 
 ## Deploy gratis en Vercel
 

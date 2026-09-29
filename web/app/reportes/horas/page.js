@@ -95,6 +95,7 @@ function getMatrixData(rows, mode) {
   return { eventTypes, matrix };
 }
 function getPersonTotals(matrix) { const totals = new Map(); matrix.forEach((row) => { if (row.persona) totals.set(row.persona, (totals.get(row.persona) || 0) + Number(row.total || 0)); }); return totals; }
+function getPersonRecords(matrix) { const totals = new Map(); matrix.forEach((row) => { if (row.persona) totals.set(row.persona, (totals.get(row.persona) || 0) + Number(row.registros || 0)); }); return totals; }
 function getPersonLatestDates(matrix) { const latest = new Map(); matrix.forEach((row) => { if (!row.persona || !row.latestDate) return; if (!latest.get(row.persona) || row.latestDate > latest.get(row.persona)) latest.set(row.persona, row.latestDate); }); return latest; }
 function getPersonRowSpans(matrix) { const spans = new Map(); matrix.forEach((row) => { if (row.persona) spans.set(row.persona, (spans.get(row.persona) || 0) + 1); }); return spans; }
 function complianceClass(percent) { if (percent >= 100) return 'ok'; if (percent >= 80) return 'warning'; return 'danger'; }
@@ -132,15 +133,87 @@ function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, e
 function MatrixTable({ rows, mode, expectedPerPerson }) {
   const { eventTypes, matrix } = useMemo(() => getMatrixData(rows, mode), [rows, mode]);
   const personTotals = useMemo(() => getPersonTotals(matrix), [matrix]);
+  const personRecords = useMemo(() => getPersonRecords(matrix), [matrix]);
   const personLatestDates = useMemo(() => getPersonLatestDates(matrix), [matrix]);
   const personRowSpans = useMemo(() => getPersonRowSpans(matrix), [matrix]);
   const visibleMatrix = useMemo(() => {
     if (mode !== 'persona') return matrix;
-    return [...matrix].sort((a, b) => { const byPerson = String(a.persona || '').localeCompare(String(b.persona || ''), 'es'); if (byPerson !== 0) return byPerson; return String(a.proyecto || '').localeCompare(String(b.proyecto || ''), 'es'); });
+    return [...matrix].sort((a, b) => {
+      const byPerson = String(a.persona || '').localeCompare(String(b.persona || ''), 'es');
+      if (byPerson !== 0) return byPerson;
+      return String(a.proyecto || '').localeCompare(String(b.proyecto || ''), 'es');
+    });
   }, [matrix, mode]);
+
   if (!matrix.length) return <div className="emptyState">No hay datos para los filtros seleccionados.</div>;
+
   const renderedPeople = new Set();
-  return <div className="tableWrap hoursTableWrap"><table className="hoursMatrixTable"><thead><tr>{mode === 'persona' && <th>Persona</th>}<th>Proyecto</th>{eventTypes.map((type) => <th className="number" key={type}>{labelType(type)}</th>)}<th className="number">Total AT</th><th className="number">PGI</th><th className="number">Total fila</th>{mode === 'persona' && <th>Cumplimiento</th>}<th className="number">Registros</th></tr></thead><tbody>{visibleMatrix.map((row) => { const isFirstPersonRow = mode === 'persona' && !renderedPeople.has(row.persona); if (isFirstPersonRow) renderedPeople.add(row.persona); const personTotal = Number(personTotals.get(row.persona) || 0); const latestDate = personLatestDates.get(row.persona); const percent = expectedPerPerson > 0 ? (personTotal / expectedPerPerson) * 100 : 0; const status = complianceClass(percent); return <tr key={`${row.persona || ''}-${row.proyecto}`} className={mode === 'persona' ? `personStatus-${status}` : ''}>{mode === 'persona' && isFirstPersonRow && <td className="personGroupCell" rowSpan={personRowSpans.get(row.persona)}><strong>{row.persona}</strong><small>Ultima carga: {formatDateDisplay(latestDate)}</small><small>{formatHours(personTotal)} hs cargadas</small></td>}<td>{row.proyecto}</td>{eventTypes.map((type) => <td className="number" key={type}>{formatHours(row.byType[type])}</td>)}<td className="number"><strong>{formatHours(row.atTotal)}</strong></td><td className="number pgiColumn"><strong>{formatHours(row.pgiTotal)}</strong></td><td className="number"><strong>{formatHours(row.total)}</strong></td>{mode === 'persona' && isFirstPersonRow && <td className="complianceCell" rowSpan={personRowSpans.get(row.persona)}><span className={`hoursCompliance ${status}`}>{complianceText(percent)} · {formatPercent(percent)}</span><small>Meta {formatHours(expectedPerPerson)} hs</small></td>}<td className="number">{formatHours(row.registros)}</td></tr>; })}</tbody></table></div>;
+
+  return (
+    <div className="hoursTableFrame">
+      <div className="hoursScrollHint">Desplazate horizontalmente para ver todos los tipos de actividad.</div>
+      <div className="tableWrap hoursTableWrap">
+        <table className="hoursMatrixTable">
+          <colgroup>
+            {mode === 'persona' && <col className="personCol" />}
+            <col className="projectCol" />
+            {eventTypes.map((type) => <col className="activityCol" key={type} />)}
+            <col className="totalCol" />
+            <col className="totalCol" />
+            <col className="totalCol" />
+            {mode === 'persona' ? <col className="controlCol" /> : <col className="totalCol" />}
+          </colgroup>
+          <thead>
+            <tr>
+              {mode === 'persona' && <th>Persona</th>}
+              <th>Proyecto</th>
+              {eventTypes.map((type) => <th className="number activityColumn" key={type}>{labelType(type)}</th>)}
+              <th className="number totalColumn">Total AT</th>
+              <th className="number totalColumn">PGI</th>
+              <th className="number totalColumn strongColumn">Total fila</th>
+              {mode === 'persona' ? <th className="controlColumn">Control</th> : <th className="number totalColumn">Registros</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleMatrix.map((row) => {
+              const isFirstPersonRow = mode === 'persona' && !renderedPeople.has(row.persona);
+              if (isFirstPersonRow) renderedPeople.add(row.persona);
+              const personTotal = Number(personTotals.get(row.persona) || 0);
+              const latestDate = personLatestDates.get(row.persona);
+              const percent = expectedPerPerson > 0 ? (personTotal / expectedPerPerson) * 100 : 0;
+              const status = complianceClass(percent);
+
+              return (
+                <tr key={`${row.persona || ''}-${row.proyecto}`} className={mode === 'persona' ? `personStatus-${status}` : ''}>
+                  {mode === 'persona' && isFirstPersonRow && (
+                    <td className="personGroupCell" rowSpan={personRowSpans.get(row.persona)}>
+                      <strong>{row.persona}</strong>
+                      <small>Ultima carga: {formatDateDisplay(latestDate)}</small>
+                      <small>{formatHours(personTotal)} hs cargadas</small>
+                    </td>
+                  )}
+                  <td className="projectCell">{row.proyecto}</td>
+                  {eventTypes.map((type) => <td className="number activityColumn" key={type}>{formatHours(row.byType[type])}</td>)}
+                  <td className="number totalColumn"><strong>{formatHours(row.atTotal)}</strong></td>
+                  <td className="number totalColumn"><strong>{formatHours(row.pgiTotal)}</strong></td>
+                  <td className="number totalColumn strongColumn"><strong>{formatHours(row.total)}</strong></td>
+                  {mode === 'persona' && isFirstPersonRow ? (
+                    <td className="controlCell" rowSpan={personRowSpans.get(row.persona)}>
+                      <span className={`hoursCompliance ${status}`}>{complianceText(percent)} · {formatPercent(percent)}</span>
+                      <small>Meta {formatHours(expectedPerPerson)} hs</small>
+                      <small>{formatHours(personRecords.get(row.persona))} registros</small>
+                    </td>
+                  ) : mode !== 'persona' ? (
+                    <td className="number totalColumn">{formatHours(row.registros)}</td>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 export default function ReporteHorasPage() {
@@ -285,7 +358,7 @@ export default function ReporteHorasPage() {
         .hoursReportShell .pageHeader{padding:30px 0 18px!important}
         .hoursReportShell .pageHeader h1{font-size:clamp(32px,3.2vw,46px)!important}
         .hoursReportShell .pageHeader p{max-width:980px}
-        .hoursReportShell .hoursFiltersPanel{display:grid!important;grid-template-columns:minmax(110px,.45fr) minmax(180px,1fr) minmax(180px,1fr) minmax(150px,.8fr) minmax(180px,1fr) 116px!important;gap:12px!important;align-items:end!important;padding:16px!important}
+        .hoursReportShell .hoursFiltersPanel{display:grid!important;grid-template-columns:minmax(145px,.55fr) minmax(180px,1fr) minmax(180px,1fr) minmax(150px,.8fr) minmax(190px,1.05fr) auto!important;gap:12px!important;align-items:end!important;padding:16px!important}
         .hoursReportShell .hoursFiltersPanel label{min-width:0}
         .hoursReportShell .hoursFiltersPanel select,.hoursReportShell .hoursFiltersPanel input{min-width:0}
         .hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:16px auto!important}
@@ -295,23 +368,27 @@ export default function ReporteHorasPage() {
         .estimatedHoursCard{border-color:#ffb074;background:#fff7f0}
         .hoursReportShell .panelHeader{padding:16px!important}
         .reportIconButton{gap:8px}
-        .hoursReportShell .hoursTableWrap{overflow:auto;max-width:100%;max-height:calc(100vh - 270px);border-top:1px solid var(--line)}
-        .hoursReportShell .hoursMatrixTable{width:max-content!important;min-width:0!important;table-layout:fixed!important}
-        .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 10px!important;font-size:12px!important;line-height:1.25!important}
-        .hoursReportShell .hoursMatrixTable th{letter-spacing:0!important;white-space:normal!important;overflow-wrap:normal!important;font-size:11px!important}
-        .hoursReportShell .hoursMatrixTable th.number,.hoursReportShell .hoursMatrixTable td.number{width:82px!important}
-        .hoursReportShell .hoursMatrixTable th:first-child{width:210px!important}
-        .hoursReportShell .hoursMatrixTable th:nth-child(2){width:180px!important}
-        .hoursReportShell .hoursMatrixTable th:last-child,.hoursReportShell .hoursMatrixTable td:last-child{width:92px!important}
-        .hoursReportShell .hoursMatrixTable thead th{position:sticky;top:0;z-index:2;background:#fff}
-        .hoursReportShell .hoursMatrixTable th:last-child,.hoursReportShell .hoursMatrixTable td:last-child{position:sticky;right:0;z-index:1;background:#fff}
-        .hoursReportShell .hoursMatrixTable th:last-child{z-index:3}
-        .hoursReportShell .hoursMatrixTable th:nth-last-child(2),.hoursReportShell .hoursMatrixTable td:nth-last-child(2){position:sticky;right:92px;z-index:1;background:#fff}
-        .hoursReportShell .hoursMatrixTable th:nth-last-child(2){z-index:3}
-        .hoursReportShell .personGroupCell{width:210px!important;min-width:0!important;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}
-        .personGroupCell strong,.personGroupCell small,.complianceCell small{display:block}
-        .personGroupCell small,.complianceCell small{margin-top:5px;color:var(--muted);font-size:11px;font-weight:700}
-        .hoursReportShell .complianceCell{width:160px!important;min-width:0!important;vertical-align:top}
+        .hoursTableFrame{background:#fff}
+        .hoursScrollHint{display:none;padding:10px 14px;color:var(--muted);font-size:12px;font-weight:750;border-top:1px solid var(--line)}
+        .hoursReportShell .hoursTableWrap{overflow:auto;max-width:100%;max-height:calc(100vh - 280px);border-top:1px solid var(--line);scrollbar-gutter:stable}
+        .hoursReportShell .hoursMatrixTable{width:100%!important;min-width:1160px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
+        .hoursReportShell .personCol{width:170px}.hoursReportShell .projectCol{width:125px}.hoursReportShell .activityCol{width:70px}.hoursReportShell .totalCol{width:70px}.hoursReportShell .controlCol{width:139px}
+        .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 8px!important;font-size:11.5px!important;line-height:1.25!important;border-right:1px solid #eef2f7!important}
+        .hoursReportShell .hoursMatrixTable th:last-child,.hoursReportShell .hoursMatrixTable td:last-child{border-right:0!important}
+        .hoursReportShell .hoursMatrixTable th{position:sticky;top:0;z-index:2;background:#f8fafc!important;color:#5d6b82;letter-spacing:0!important;white-space:normal!important;overflow-wrap:anywhere!important;font-size:10.5px!important;border-bottom:1px solid #d8e0ec!important}
+        .hoursReportShell .hoursMatrixTable tbody tr:nth-child(even) td{background:#fbfcfe}
+        .hoursReportShell .hoursMatrixTable tbody tr:hover td{background:#fff8f1}
+        .hoursReportShell .hoursMatrixTable .activityColumn{width:70px!important}
+        .hoursReportShell .hoursMatrixTable .totalColumn{width:70px!important}
+        .hoursReportShell .hoursMatrixTable .strongColumn{background:#fff7ef!important;color:var(--navy)}
+        .hoursReportShell .hoursMatrixTable th:first-child{width:170px!important}
+        .hoursReportShell .hoursMatrixTable th:nth-child(2){width:125px!important}
+        .hoursReportShell .personGroupCell{width:170px!important;min-width:0!important;border-right:1px solid var(--line);background:#f8fafc!important;vertical-align:top}
+        .projectCell{font-weight:750;color:var(--navy)}
+        .personGroupCell strong,.personGroupCell small,.controlCell small{display:block}
+        .personGroupCell small,.controlCell small{margin-top:5px;color:var(--muted);font-size:11px;font-weight:750}
+        .hoursReportShell .controlColumn,.hoursReportShell .controlCell{width:139px!important;min-width:0!important;vertical-align:top}
+        .controlCell{background:#fff!important}
         .hoursCompliance{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}
         .hoursCompliance.ok{background:#eef9f0;color:#237a35}
         .hoursCompliance.warning{background:#fff4e8;color:#b85c00}
@@ -328,7 +405,7 @@ export default function ReporteHorasPage() {
         .pgiModal label{display:grid;gap:7px;color:var(--muted);font-size:13px;font-weight:800}
         .pgiModal input,.pgiModal select{width:100%;min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:0 10px}
         .compactError{width:100%;margin:0;padding:12px}
-        @media (max-width:1280px){.hoursReportShell .hoursFiltersPanel{grid-template-columns:repeat(2,minmax(0,1fr)) 116px!important}.hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+        @media (max-width:1100px){.hoursScrollHint{display:block}.hoursReportShell .hoursFiltersPanel{grid-template-columns:repeat(2,minmax(0,1fr)) auto!important}.hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
         @media (max-width:900px){.hoursReportShell>section{width:calc(100% - 24px)!important}.hoursReportShell .hoursFiltersPanel,.hoursReportShell .hoursKpiGrid{grid-template-columns:1fr!important}.hoursReportShell .hoursMatrixTable{min-width:1080px!important}.pgiModal header,.pgiModal footer{align-items:flex-start;flex-direction:column}}
       `}</style>
     </main>
