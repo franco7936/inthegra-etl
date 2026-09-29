@@ -18,6 +18,31 @@ Tipos esperados desde AT:
 - Calendar events.
 - Day off, holidays, vacaciones u otros eventos equivalentes que el endpoint entregue como eventos de calendario o workload.
 
+## Detalle de actividad
+
+El endpoint de ActivityTimeline no entrega un campo separado para el subtipo de `BOOKING` en la respuesta actual.
+
+Campos observados para bookings:
+
+- `issueType`
+- `summary`
+- `projectKey`
+- `plannedStart`
+- `plannedEnd`
+- `dailyTimeEstimate`
+- `originalTimeEstimate`
+- `remainingTimeEstimate`
+
+Por eso `at_workload` guarda `activity_detail_at` como campo normalizado para codificar el detalle operativo. Para `BOOKING`, el ETL toma el texto posterior al separador `|` dentro de `summary`.
+
+Ejemplo:
+
+```text
+[Booking] BUSINESS | Skills IA -> activity_detail_at = Skills IA
+```
+
+Si en el futuro ActivityTimeline empieza a devolver campos nativos como `activityType`, `bookingType` o `category`, el ETL los toma como fallback.
+
 ## Asociacion de persona
 
 La persona se resuelve contra `map_personas` usando, en orden:
@@ -94,6 +119,7 @@ La clave contempla:
 - `project_id`
 - `issue_key`
 - `event_type`
+- `activity_detail_at`
 - `summary`
 - `planned_start`
 - `planned_end`

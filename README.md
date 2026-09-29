@@ -77,6 +77,8 @@ Definiciones SQL versionadas:
 
 En el reporte de horas, `event_type` se normaliza para mantener columnas consistentes: `booking`, `day_off`, `holiday`, `jira_issue`, `placeholder`, `sick_leave`, `vacation` y `worklog`.
 
+Para distinguir tipos dentro de `booking`, `at_workload.activity_detail_at` guarda el detalle operativo detectado desde ActivityTimeline. Actualmente el endpoint no entrega un subtipo separado, por lo que el ETL lo deriva desde `summary` tomando el texto posterior al separador `|`.
+
 ## Web dinamica
 
 La app esta en `web/`.

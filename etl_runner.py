@@ -99,6 +99,7 @@ def ensure_modelo_extendido(conn):
         "project_key_at": "TEXT",
         "user_real_name_at": "TEXT",
         "user_email_at": "TEXT",
+        "activity_detail_at": "TEXT",
         "dedupe_key": "TEXT",
     }.items():
         _ensure_column(conn, "at_workload", column, column_type)
@@ -407,6 +408,23 @@ def _project_key_from_item(item, project_by_key):
     return ""
 
 
+def _activity_detail_from_item(item):
+    event_type = str(item.get("issueType") or item.get("recordType") or "").strip().upper()
+    summary = str(item.get("summary") or item.get("comment") or "").strip()
+    if event_type == "BOOKING" and "|" in summary:
+        detail = summary.rsplit("|", 1)[1].strip()
+        return detail[:200]
+    return _first_value(
+        item.get("activityType"),
+        item.get("activityTypeName"),
+        item.get("bookingType"),
+        item.get("bookingTypeName"),
+        item.get("category"),
+        item.get("categoryName"),
+        item.get("typeName"),
+    )
+
+
 def _firma_worklog_item(item):
     return "|".join([str(item.get("worklogId") or ""), str(item.get("issueKey") or ""), str(item.get("username") or item.get("userName") or ""), str(item.get("date") or item.get("plannedStart") or ""), str(item.get("timeSpent") or item.get("dailyTimeEstimate") or item.get("originalTimeEstimate") or "")])
 
@@ -469,6 +487,7 @@ def extraer_at_workload_seguro(at, conn, equipos, modo, full=False):
                         "user_email_at": identity["email"],
                         "issue_key": item.get("issueKey", ""),
                         "event_type": event_type,
+                        "activity_detail_at": _activity_detail_from_item(item),
                         "summary": (item.get("summary") or "")[:500],
                         "planned_start": item.get("plannedStart", ""),
                         "planned_end": item.get("plannedEnd", ""),
@@ -522,6 +541,7 @@ def extraer_at_workload_seguro(at, conn, equipos, modo, full=False):
                         "user_email_at": identity["email"],
                         "issue_key": issue_key,
                         "event_type": event_type,
+                        "activity_detail_at": _activity_detail_from_item(item),
                         "summary": (item.get("comment") or item.get("summary") or "")[:500],
                         "planned_start": (item.get("date") or item.get("plannedStart") or "")[:10],
                         "planned_end": (item.get("date") or item.get("plannedEnd") or "")[:10],
@@ -613,6 +633,7 @@ def at_workload_dedupe_key(row):
         str(row.get("project_id") or ""),
         _clean(row.get("issue_key")).upper(),
         _clean(row.get("event_type")),
+        _clean(row.get("activity_detail_at")),
         _clean(row.get("summary"))[:500],
         _date_part(row.get("planned_start")),
         _date_part(row.get("planned_end")),
@@ -625,10 +646,11 @@ def ensure_at_workload_dedupe(conn):
     if not _has_table(conn, "at_workload"):
         return
     _ensure_column(conn, "at_workload", "dedupe_key", "TEXT")
-    rows = conn.execute("SELECT workload_id, person_id, project_id, issue_key, event_type, summary, planned_start, planned_end, tiempo_empleado FROM at_workload WHERE dedupe_key IS NULL OR TRIM(dedupe_key) = ''").fetchall()
+    _ensure_column(conn, "at_workload", "activity_detail_at", "TEXT")
+    rows = conn.execute("SELECT workload_id, person_id, project_id, issue_key, event_type, activity_detail_at, summary, planned_start, planned_end, tiempo_empleado FROM at_workload WHERE dedupe_key IS NULL OR TRIM(dedupe_key) = ''").fetchall()
     updates = []
     for row in rows:
-        row_dict = {"person_id": row[1], "project_id": row[2], "issue_key": row[3], "event_type": row[4], "summary": row[5], "planned_start": row[6], "planned_end": row[7], "tiempo_empleado": row[8]}
+        row_dict = {"person_id": row[1], "project_id": row[2], "issue_key": row[3], "event_type": row[4], "activity_detail_at": row[5], "summary": row[6], "planned_start": row[7], "planned_end": row[8], "tiempo_empleado": row[9]}
         updates.append((at_workload_dedupe_key(row_dict), row[0]))
     if updates:
         conn.executemany("UPDATE at_workload SET dedupe_key=? WHERE workload_id=?", updates)

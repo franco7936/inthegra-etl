@@ -28,6 +28,7 @@ SELECT
         WHEN 'worklog' THEN 'worklog'
         ELSE LOWER(TRIM(COALESCE(w.event_type, 'sin_tipo')))
     END AS event_type,
+    w.activity_detail_at,
     w.summary,
     date(w.planned_start) AS fecha,
     w.planned_start,
@@ -58,6 +59,7 @@ SELECT
     me.team_id_at,
     NULL AS issue_key,
     'PGI' AS event_type,
+    p.incidence_type AS activity_detail_at,
     COALESCE(p.comentario, 'PGI log') AS summary,
     date(p.fecha) AS fecha,
     p.fecha AS planned_start,
@@ -82,12 +84,13 @@ SELECT
     proyecto,
     project_key_rpt,
     event_type,
+    activity_detail_at,
     ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at,
     ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi,
     ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas,
     COUNT(*) AS registros
 FROM VW_REPORTE_HORAS_DETALLE
-GROUP BY fecha, person_id, persona, project_id, proyecto, project_key_rpt, event_type;
+GROUP BY fecha, person_id, persona, project_id, proyecto, project_key_rpt, event_type, activity_detail_at;
 
 CREATE VIEW VW_REPORTE_HORAS_EQUIPO_TIPO AS
 SELECT
@@ -96,10 +99,11 @@ SELECT
     proyecto,
     project_key_rpt,
     event_type,
+    activity_detail_at,
     ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at,
     ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi,
     ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas,
     COUNT(DISTINCT person_id) AS personas,
     COUNT(*) AS registros
 FROM VW_REPORTE_HORAS_DETALLE
-GROUP BY fecha, project_id, proyecto, project_key_rpt, event_type;
+GROUP BY fecha, project_id, proyecto, project_key_rpt, event_type, activity_detail_at;

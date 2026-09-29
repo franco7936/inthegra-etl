@@ -296,6 +296,7 @@ def crear_tablas(conn: TursoConn):
             project_id INTEGER,
             issue_key TEXT,
             event_type TEXT,
+            activity_detail_at TEXT,
             summary TEXT,
             planned_start TEXT,
             planned_end TEXT,
