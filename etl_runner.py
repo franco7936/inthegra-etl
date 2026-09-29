@@ -429,7 +429,20 @@ def _firma_worklog_item(item):
     return "|".join([str(item.get("worklogId") or ""), str(item.get("issueKey") or ""), str(item.get("username") or item.get("userName") or ""), str(item.get("date") or item.get("plannedStart") or ""), str(item.get("timeSpent") or item.get("dailyTimeEstimate") or item.get("originalTimeEstimate") or "")])
 
 
+ISSUE_PREFIXES_OMITIR_SIN_PROYECTO = ("SCRR", "SML", "EC", "DEMO")
+
+
+def _issue_sin_proyecto_omitido(row):
+    issue_key = str(row.get("issue_key") or "").strip().upper()
+    return not row.get("project_id") and issue_key.startswith(ISSUE_PREFIXES_OMITIR_SIN_PROYECTO)
+
+
 def append_at_row(rows, row, counters, source, team_name, item, project_by_team):
+    if _issue_sin_proyecto_omitido(row):
+        counters["issue_omitido_sin_proyecto"] += 1
+        counters["omitidos"] += 1
+        etl.log.warning("AT %s omitido por issue sin proyecto no permitido | team=%s issue=%s type=%s summary=%s", source, team_name, row.get("issue_key", ""), item.get("issueType", item.get("recordType", "")), (item.get("summary") or item.get("comment") or "")[:120])
+        return False
     if not row.get("project_id"):
         fallback = project_by_team.get(str(row.get("team_id_at") or "").strip())
         if fallback:
@@ -459,7 +472,7 @@ def extraer_at_workload_seguro(at, conn, equipos, modo, full=False):
     project_by_key = mapa_project_por_key(conn)
     project_by_team = mapa_project_por_team_valido(conn)
     rows = []
-    counters = {"sin_persona": 0, "sin_proyecto": 0, "omitidos": 0}
+    counters = {"sin_persona": 0, "sin_proyecto": 0, "issue_omitido_sin_proyecto": 0, "omitidos": 0}
     max_pages_per_team = int(os.getenv("AT_WORKLOG_MAX_PAGES_PER_TEAM", "25"))
     max_rows_per_team = int(os.getenv("AT_WORKLOG_MAX_ROWS_PER_TEAM", "10000"))
     for equipo in equipos:
@@ -567,7 +580,7 @@ def extraer_at_workload_seguro(at, conn, equipos, modo, full=False):
         etl.log.info("ActivityTimeline equipo %s: %s filas acumuladas", team_name, len(rows) - team_rows_before)
     conn.execute("DELETE FROM at_workload WHERE planned_start >= ? AND planned_start <= ?", (start, end))
     conn.commit()
-    detalle = f"{start} a {end}; sin_persona={counters['sin_persona']}; sin_proyecto={counters['sin_proyecto']}; omitidos={counters['omitidos']}"
+    detalle = f"{start} a {end}; sin_persona={counters['sin_persona']}; sin_proyecto={counters['sin_proyecto']}; issue_omitido_sin_proyecto={counters['issue_omitido_sin_proyecto']}; omitidos={counters['omitidos']}"
     etl.log_etl(conn, modo, "at_workload", etl.upsert(conn, "at_workload", rows), detalle=detalle)
     limpiar_at_workload_invalido(conn, start, end)
     rematchear_at_workload_ids(conn)
@@ -579,9 +592,10 @@ def limpiar_at_workload_invalido(conn, start=None, end=None):
     if start and end:
         date_clause = "AND planned_start >= ? AND planned_start <= ?"
         params = [start, end]
+    issue_prefix_clause = "(project_id IS NULL AND (upper(trim(issue_key)) LIKE 'SCRR%' OR upper(trim(issue_key)) LIKE 'SML%' OR upper(trim(issue_key)) LIKE 'EC%' OR upper(trim(issue_key)) LIKE 'DEMO%'))"
     row = conn.execute(f"""
         SELECT COUNT(*) FROM at_workload
-        WHERE (person_id IS NULL OR (project_id IS NOT NULL AND project_id NOT IN (
+        WHERE (person_id IS NULL OR {issue_prefix_clause} OR (project_id IS NOT NULL AND project_id NOT IN (
             SELECT project_id FROM map_equipo_proyecto
             WHERE project_key_rpt IS NOT NULL AND TRIM(project_key_rpt) <> '' AND COALESCE(activo, 1) = 1
         ))) {date_clause}
@@ -589,7 +603,7 @@ def limpiar_at_workload_invalido(conn, start=None, end=None):
     count = int(row[0] or 0) if row else 0
     conn.execute(f"""
         DELETE FROM at_workload
-        WHERE (person_id IS NULL OR (project_id IS NOT NULL AND project_id NOT IN (
+        WHERE (person_id IS NULL OR {issue_prefix_clause} OR (project_id IS NOT NULL AND project_id NOT IN (
             SELECT project_id FROM map_equipo_proyecto
             WHERE project_key_rpt IS NOT NULL AND TRIM(project_key_rpt) <> '' AND COALESCE(activo, 1) = 1
         ))) {date_clause}

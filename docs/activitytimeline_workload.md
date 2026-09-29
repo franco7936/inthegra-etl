@@ -72,6 +72,8 @@ Si existe persona pero no existe un match confiable de equipo/proyecto, el regis
 
 Estos registros solo son visibles para administradores en el reporte de horas. Los usuarios no administradores tienen el reporte operativo filtrado por su `project_id`, por lo que no ven horas sin proyecto ni horas de otros equipos.
 
+Excepcion: si el registro no tiene proyecto asociado y el `issue_key` empieza con `SCRR`, `SML`, `EC` o `DEMO`, el ETL lo omite y la limpieza operativa lo elimina de `at_workload`. Esos prefijos no deben ingresar como horas operativas sin proyecto.
+
 ## PGI manual
 
 `pgi_workload` permite cargar horas manuales desde la web.
