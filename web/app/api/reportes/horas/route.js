@@ -5,7 +5,7 @@ import { parseSession } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 const REQUIRED_VIEWS = ['VW_REPORTE_HORAS_DETALLE', 'VW_REPORTE_HORAS_PERSONA_TIPO', 'VW_REPORTE_HORAS_EQUIPO_TIPO'];
-const REQUIRED_DETAIL_COLUMNS = ['horas_at', 'horas_pgi', 'tiempo_empleado'];
+const REQUIRED_DETAIL_COLUMNS = ['horas_at', 'horas_pgi', 'tiempo_empleado', 'activity_detail_at'];
 
 function defaultDates() {
   const now = new Date();
@@ -18,7 +18,7 @@ function defaultDates() {
 function readFilters(request) {
   const { searchParams } = new URL(request.url);
   const defaults = defaultDates();
-  return { from: searchParams.get('from') || defaults.from, to: searchParams.get('to') || defaults.to, projectId: searchParams.get('projectId') || '', personId: searchParams.get('personId') || '', eventType: searchParams.get('eventType') || '' };
+  return { from: searchParams.get('from') || defaults.from, to: searchParams.get('to') || defaults.to, projectId: searchParams.get('projectId') || '', personId: searchParams.get('personId') || '', eventType: searchParams.get('eventType') || '', activityDetail: searchParams.get('activityDetail') || '' };
 }
 
 function applyAccessScope(filters, session) {
@@ -47,6 +47,11 @@ function buildWhere(filters) {
     args.push(filters.eventType);
   }
 
+  if (filters.activityDetail) {
+    clauses.push('activity_detail_at = ?');
+    args.push(filters.activityDetail);
+  }
+
   return { where: clauses.join(' AND '), args };
 }
 
@@ -69,7 +74,7 @@ async function getMissingDetailColumns(db) {
 }
 
 function emptyPayload(filters, setupMessage) {
-  return { ok: true, modelReady: false, setupMessage, filters, summary: { horas: 0, horas_at: 0, horas_pgi: 0, registros: 0, personas: 0, proyectos: 0 }, byPerson: [], byTeam: [], filtersData: { projects: [], people: [], eventTypes: [] } };
+  return { ok: true, modelReady: false, setupMessage, filters, summary: { horas: 0, horas_at: 0, horas_pgi: 0, registros: 0, personas: 0, proyectos: 0 }, byPerson: [], byTeam: [], filtersData: { projects: [], people: [], eventTypes: [], activityDetails: [] } };
 }
 
 export async function GET(request) {
@@ -83,21 +88,22 @@ export async function GET(request) {
     if (missingViews.length) return NextResponse.json(emptyPayload(filters, `Faltan vistas en Turso: ${missingViews.join(', ')}. Ejecutar el ETL principal.`));
 
     const missingColumns = await getMissingDetailColumns(db);
-    if (missingColumns.length) return NextResponse.json(emptyPayload(filters, `La vista de horas todavia no tiene PGI (${missingColumns.join(', ')}). Ejecutar el ETL principal con etl_runner_v4.`));
+    if (missingColumns.length) return NextResponse.json(emptyPayload(filters, `La vista de horas todavia no tiene estas columnas (${missingColumns.join(', ')}). Ejecutar el ETL principal.`));
 
     const { where, args } = buildWhere(filters);
-    const filterBase = buildWhere({ from: filters.from, to: filters.to, projectId: filters.projectId, personId: '', eventType: '' });
+    const filterBase = buildWhere({ from: filters.from, to: filters.to, projectId: filters.projectId, personId: '', eventType: '', activityDetail: '' });
 
-    const [summaryRows, byPerson, byTeam, projects, people, eventTypes] = await Promise.all([
+    const [summaryRows, byPerson, byTeam, projects, people, eventTypes, activityDetails] = await Promise.all([
       queryRows(db, `SELECT ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas, ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at, ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi, COUNT(*) AS registros, COUNT(DISTINCT person_id) AS personas, COUNT(DISTINCT project_id) AS proyectos FROM VW_REPORTE_HORAS_DETALLE WHERE ${where}`, args),
-      queryRows(db, `SELECT person_id, persona, project_id, proyecto, project_key_rpt, event_type, ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas, ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at, ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi, COUNT(*) AS registros, MAX(fecha) AS ultima_fecha FROM VW_REPORTE_HORAS_DETALLE WHERE ${where} GROUP BY person_id, persona, project_id, proyecto, project_key_rpt, event_type ORDER BY horas DESC LIMIT 500`, args),
-      queryRows(db, `SELECT project_id, proyecto, project_key_rpt, event_type, ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas, ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at, ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi, COUNT(DISTINCT person_id) AS personas, COUNT(*) AS registros FROM VW_REPORTE_HORAS_DETALLE WHERE ${where} GROUP BY project_id, proyecto, project_key_rpt, event_type ORDER BY horas DESC LIMIT 300`, args),
+      queryRows(db, `SELECT person_id, persona, project_id, proyecto, project_key_rpt, event_type, activity_detail_at, ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas, ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at, ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi, COUNT(*) AS registros, MAX(fecha) AS ultima_fecha FROM VW_REPORTE_HORAS_DETALLE WHERE ${where} GROUP BY person_id, persona, project_id, proyecto, project_key_rpt, event_type, activity_detail_at ORDER BY horas DESC LIMIT 500`, args),
+      queryRows(db, `SELECT project_id, proyecto, project_key_rpt, event_type, activity_detail_at, ROUND(SUM(COALESCE(tiempo_empleado, 0)), 2) AS horas, ROUND(SUM(COALESCE(horas_at, 0)), 2) AS horas_at, ROUND(SUM(COALESCE(horas_pgi, 0)), 2) AS horas_pgi, COUNT(DISTINCT person_id) AS personas, COUNT(*) AS registros FROM VW_REPORTE_HORAS_DETALLE WHERE ${where} GROUP BY project_id, proyecto, project_key_rpt, event_type, activity_detail_at ORDER BY horas DESC LIMIT 300`, args),
       queryRows(db, `SELECT DISTINCT project_id, proyecto, project_key_rpt FROM VW_REPORTE_HORAS_DETALLE WHERE ${filterBase.where} AND project_id IS NOT NULL ORDER BY proyecto`, filterBase.args),
       queryRows(db, `SELECT DISTINCT person_id, persona FROM VW_REPORTE_HORAS_DETALLE WHERE ${filterBase.where} AND person_id IS NOT NULL ORDER BY persona`, filterBase.args),
       queryRows(db, `SELECT DISTINCT event_type FROM VW_REPORTE_HORAS_DETALLE WHERE ${filterBase.where} AND event_type IS NOT NULL ORDER BY event_type`, filterBase.args),
+      queryRows(db, `SELECT DISTINCT activity_detail_at FROM VW_REPORTE_HORAS_DETALLE WHERE ${filterBase.where} AND activity_detail_at IS NOT NULL AND TRIM(activity_detail_at) <> '' ORDER BY activity_detail_at`, filterBase.args),
     ]);
 
-    return NextResponse.json({ ok: true, modelReady: true, filters, summary: summaryRows[0] || { horas: 0, horas_at: 0, horas_pgi: 0, registros: 0, personas: 0, proyectos: 0 }, byPerson, byTeam, filtersData: { projects, people, eventTypes } });
+    return NextResponse.json({ ok: true, modelReady: true, filters, summary: summaryRows[0] || { horas: 0, horas_at: 0, horas_pgi: 0, registros: 0, personas: 0, proyectos: 0 }, byPerson, byTeam, filtersData: { projects, people, eventTypes, activityDetails } });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }

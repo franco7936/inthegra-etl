@@ -100,7 +100,7 @@ function complianceClass(percent) { if (percent >= 100) return 'ok'; if (percent
 function complianceText(percent) { if (percent >= 100) return 'OK'; if (percent >= 80) return 'Revisar'; return 'Alerta'; }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char])); }
 function fileDate(value) { return String(value || '').replace(/[^0-9-]/g, ''); }
-function reportFilters(filters) { return { from: filters.from, to: filters.to, projectId: filters.projectId, personId: filters.personId, eventType: filters.eventType }; }
+function reportFilters(filters) { return { from: filters.from, to: filters.to, projectId: filters.projectId, personId: filters.personId, eventType: filters.eventType, activityDetail: filters.activityDetail }; }
 
 function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, expectedTotal, businessDays, period, summary }) {
   const { eventTypes, matrix } = getMatrixData(rows, mode);
@@ -115,7 +115,7 @@ function downloadExcel({ rows, mode, filters, filterLabels, expectedPerPerson, e
     }
     return [row.proyecto, ...eventTypes.map((type) => Number(row.byType[type] || 0).toFixed(2)), Number(row.atTotal || 0).toFixed(2), Number(row.pgiTotal || 0).toFixed(2), Number(row.total || 0).toFixed(2), Number(row.registros || 0).toFixed(0)];
   });
-  const filterRows = [['Mes', period], ['Desde', filters.from || ''], ['Hasta', filters.to || ''], ['Proyecto', filterLabels.project || 'Todos'], ['Persona', filterLabels.person || 'Todas'], ['Actividad', filterLabels.eventType || 'Todas'], ['Vista', mode === 'persona' ? 'Personas' : 'Proyectos'], ['Dias habiles', businessDays], ['Total estimado horas', Number(expectedTotal || 0).toFixed(2)], ['Horas AT', Number(summary?.horas_at || 0).toFixed(2)], ['Horas PGI', Number(summary?.horas_pgi || 0).toFixed(2)], ['Horas totales', Number(summary?.horas || 0).toFixed(2)]];
+  const filterRows = [['Mes', period], ['Desde', filters.from || ''], ['Hasta', filters.to || ''], ['Proyecto', filterLabels.project || 'Todos'], ['Persona', filterLabels.person || 'Todas'], ['Actividad', filterLabels.eventType || 'Todas'], ['Detalle booking', filterLabels.activityDetail || 'Todos'], ['Vista', mode === 'persona' ? 'Personas' : 'Proyectos'], ['Dias habiles', businessDays], ['Total estimado horas', Number(expectedTotal || 0).toFixed(2)], ['Horas AT', Number(summary?.horas_at || 0).toFixed(2)], ['Horas PGI', Number(summary?.horas_pgi || 0).toFixed(2)], ['Horas totales', Number(summary?.horas || 0).toFixed(2)]];
   const html = `<html><head><meta charset="UTF-8" /><style>table{border-collapse:collapse;font-family:Arial,sans-serif;margin-bottom:18px}th{background:#ff6a00;color:#fff;font-weight:bold}th,td{border:1px solid #d9e2ef;padding:8px}td.number{mso-number-format:"0.00";text-align:right}h1,h2{color:#0f2043}</style></head><body><h1>Reporte de horas</h1><h2>Filtros y resumen</h2><table><tbody>${filterRows.map((row) => `<tr><td><strong>${escapeHtml(row[0])}</strong></td><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table><h2>Detalle agrupado</h2><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${bodyRows.map((row) => `<tr>${row.map((cell, index) => `<td${index >= (mode === 'persona' ? 3 : 1) ? ' class="number"' : ''}>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -144,7 +144,7 @@ function MatrixTable({ rows, mode, expectedPerPerson }) {
 
 export default function ReporteHorasPage() {
   const initial = currentMonthRange();
-  const [filters, setFilters] = useState({ month: initial.month, from: initial.from, to: initial.to, projectId: '', personId: '', eventType: '' });
+  const [filters, setFilters] = useState({ month: initial.month, from: initial.from, to: initial.to, projectId: '', personId: '', eventType: '', activityDetail: '' });
   const [data, setData] = useState(null);
   const [view, setView] = useState('persona');
   const [loading, setLoading] = useState(true);
@@ -200,10 +200,129 @@ export default function ReporteHorasPage() {
   const modelPending = data && data.modelReady === false;
   const selectedProject = (data?.filtersData?.projects || []).find((project) => String(project.project_id) === String(filters.projectId));
   const selectedPerson = (data?.filtersData?.people || []).find((person) => String(person.person_id) === String(filters.personId));
+  const selectedActivityDetail = (data?.filtersData?.activityDetails || []).find((item) => String(item.activity_detail_at) === String(filters.activityDetail));
   const canExport = !loading && !error && rows.length > 0;
 
   function handleMonthChange(value) { const nextRange = monthRange(value); setFilters({ ...filters, ...nextRange }); setPgiForm({ ...pgiForm, fecha: nextRange.from }); }
-  function handleExport() { downloadExcel({ rows, mode: view, filters, expectedPerPerson, expectedTotal: estimatedTotal, businessDays, period: selectedPeriod, summary: data?.summary, filterLabels: { project: selectedProject?.proyecto || selectedProject?.project_key_rpt || '', person: selectedPerson?.persona || '', eventType: filters.eventType ? labelType(filters.eventType) : '' } }); }
+  function handleExport() { downloadExcel({ rows, mode: view, filters, expectedPerPerson, expectedTotal: estimatedTotal, businessDays, period: selectedPeriod, summary: data?.summary, filterLabels: { project: selectedProject?.proyecto || selectedProject?.project_key_rpt || '', person: selectedPerson?.persona || '', eventType: filters.eventType ? labelType(filters.eventType) : '', activityDetail: selectedActivityDetail?.activity_detail_at || filters.activityDetail || '' } }); }
 
-  return <main className="shell reportShell hoursReportShell"><nav className="topbar"><Link className="brand" href="/"><img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" /><span><strong>Inthegra Reports</strong><small>Reporte dinamico</small></span></Link><Link className="navLink" href="/">Inicio</Link></nav><section className="pageHeader"><div><p className="eyebrow">ActivityTimeline + PGI</p><h1>Reporte de horas</h1><p>Horas por persona y por proyecto, agrupadas por tipo de actividad e incluyendo cargas PGI manuales.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section><section className="filtersPanel hoursFiltersPanel"><label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label><label>Proyecto<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label><label>Persona<select value={filters.personId} onChange={(event) => setFilters({ ...filters, personId: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.people || []).map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label><label>Actividad<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.eventTypes || []).map((item) => <option key={item.event_type} value={item.event_type}>{labelType(item.event_type)}</option>)}</select></label><button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button></section>{error && <div className="errorBox">{error}</div>}{modelPending && <div className="errorBox">{data.setupMessage}</div>}<section className="kpiGrid hoursKpiGrid"><article className="estimatedHoursCard"><span>Total estimado horas del mes</span><strong>{formatHours(estimatedTotal)}</strong><small>{selectedPeriod} · {formatHours(data?.summary?.personas)} personas · {businessDays} dias habiles</small></article><article><span>Horas total</span><strong>{formatHours(data?.summary?.horas)}</strong><small>{formatPercent(coveragePercent)} del estimado</small></article><article><span>Horas AT</span><strong>{formatHours(data?.summary?.horas_at)}</strong></article><article><span>PGI</span><strong>{formatHours(data?.summary?.horas_pgi)}</strong></article><article><span>Registros</span><strong>{formatHours(data?.summary?.registros)}</strong></article></section><section className="reportPanel"><div className="panelHeader"><div><h2>Distribucion por tipo de actividad</h2><p>{selectedPeriod}</p></div><div className="panelActions"><div className="segmented"><button className={view === 'persona' ? 'active' : ''} onClick={() => setView('persona')}>Personas</button><button className={view === 'equipo' ? 'active' : ''} onClick={() => setView('equipo')}>Proyectos</button></div><button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button><button className="primaryButton pgiLogButton" onClick={openPgiLog}>PGI Log</button></div></div>{loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} expectedPerPerson={expectedPerPerson} />}</section>{pgiOpen && <div className="modalBackdrop"><form className="pgiModal" onSubmit={savePgiLog}><header><div><p className="eyebrow">Carga manual</p><h2>PGI Log</h2></div><button type="button" className="secondaryButton" onClick={() => setPgiOpen(false)}>Cerrar</button></header>{pgiError && <div className="errorBox compactError">{pgiError}</div>}<label>Proyecto<select value={pgiForm.projectId} disabled={pgiRefs.projects.length === 1} onChange={(event) => setPgiForm({ ...pgiForm, projectId: event.target.value })} required><option value="">Seleccionar proyecto</option>{pgiRefs.projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label><label>Persona<select value={pgiForm.personId} onChange={(event) => setPgiForm({ ...pgiForm, personId: event.target.value })} required><option value="">Seleccionar persona</option>{pgiRefs.people.map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label><label>Tipo de incidencia<select value={pgiForm.incidenceType} onChange={(event) => setPgiForm({ ...pgiForm, incidenceType: event.target.value })} required>{(pgiRefs.incidenceTypes.length ? pgiRefs.incidenceTypes : [{ key: 'pgi', label: 'PGI general' }, { key: 'day_off', label: 'Day off' }, { key: 'holiday', label: 'Vacaciones' }, { key: 'overtime', label: 'Horas extras' }]).map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}</select></label><label>Fecha<input type="date" value={pgiForm.fecha} onChange={(event) => setPgiForm({ ...pgiForm, fecha: event.target.value })} required /></label><label>Horas<input type="number" min="0.25" max="24" step="0.25" value={pgiForm.horas} onChange={(event) => setPgiForm({ ...pgiForm, horas: event.target.value })} required /></label><label>Comentario<input type="text" placeholder="Opcional" value={pgiForm.comentario} onChange={(event) => setPgiForm({ ...pgiForm, comentario: event.target.value })} /></label><footer><button type="submit" className="primaryButton" disabled={pgiSaving}>{pgiSaving ? 'Guardando...' : 'Guardar PGI'}</button></footer></form></div>}<style jsx global>{`.hoursReportShell{padding-bottom:28px}.hoursReportShell>section{width:calc(100% - 28px)!important;max-width:none;margin-left:auto;margin-right:auto}.hoursReportShell .pageHeader{padding:26px 14px 16px}.hoursReportShell .pageHeader h1{font-size:clamp(30px,3.4vw,44px)}.hoursReportShell .pageHeader p{max-width:980px}.hoursFiltersPanel{grid-template-columns:150px minmax(220px,1.2fr) minmax(220px,1.2fr) minmax(180px,.9fr) 110px;gap:10px;padding:14px}.hoursKpiGrid{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px auto}.hoursKpiGrid article{padding:14px 16px}.hoursKpiGrid article small{display:block;margin-top:6px;color:var(--muted);line-height:1.35}.hoursKpiGrid strong{font-size:clamp(24px,2vw,30px)}.estimatedHoursCard{border-color:#ffb074;background:#fff7f0}.hoursReportShell .panelHeader{padding:14px 16px}.hoursMatrixTable{width:100%;min-width:0!important;table-layout:fixed}.hoursMatrixTable th,.hoursMatrixTable td{padding:9px 8px;font-size:12px;line-height:1.25}.hoursMatrixTable th{letter-spacing:0}.hoursMatrixTable th.number,.hoursMatrixTable td.number{width:70px}.hoursMatrixTable th:first-child{width:170px}.hoursMatrixTable th:nth-child(2){width:170px}.hoursMatrixTable td{overflow:hidden;text-overflow:ellipsis}.personGroupCell{width:170px;min-width:0;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}.personGroupCell strong,.personGroupCell small,.complianceCell small{display:block}.personGroupCell small,.complianceCell small{margin-top:5px;color:var(--muted);font-size:11px;font-weight:700}.complianceCell{width:116px;min-width:0;vertical-align:top}.hoursCompliance{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}.hoursCompliance.ok{background:#eef9f0;color:#237a35}.hoursCompliance.warning{background:#fff4e8;color:#b85c00}.hoursCompliance.danger{background:#fff0f0;color:#b42318}.personStatus-ok .personGroupCell{border-left:4px solid var(--green)}.personStatus-warning .personGroupCell{border-left:4px solid var(--orange)}.personStatus-danger .personGroupCell{border-left:4px solid var(--red)}.pgiColumn{background:#fff8f1}.pgiLogButton{min-height:38px;padding:0 18px;box-shadow:0 8px 20px rgba(255,106,0,.18)}.modalBackdrop{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(8,17,31,.42)}.pgiModal{width:min(560px,100%);display:grid;gap:14px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:22px;box-shadow:0 24px 70px rgba(15,32,67,.24)}.pgiModal header,.pgiModal footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.pgiModal h2{margin:0}.pgiModal label{display:grid;gap:7px;color:var(--muted);font-size:13px;font-weight:800}.pgiModal input,.pgiModal select{width:100%;min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:0 10px}.compactError{width:100%;margin:0;padding:12px}@media (max-width:1180px){.hoursKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.hoursFiltersPanel{grid-template-columns:repeat(3,minmax(0,1fr))}.hoursMatrixTable{min-width:980px!important}}@media (max-width:900px){.hoursReportShell>section{width:calc(100% - 24px)!important}.hoursKpiGrid{grid-template-columns:1fr}.hoursFiltersPanel{grid-template-columns:1fr}.pgiModal header,.pgiModal footer{align-items:flex-start;flex-direction:column}}`}</style><style jsx global>{`.hoursReportShell{padding-bottom:32px}.hoursReportShell>section{width:min(1560px,calc(100% - 48px))!important;max-width:none;margin-left:auto!important;margin-right:auto!important}.hoursReportShell .pageHeader{padding:30px 0 18px!important}.hoursReportShell .pageHeader h1{font-size:clamp(32px,3.2vw,46px)!important}.hoursReportShell .pageHeader p{max-width:980px}.hoursReportShell .hoursFiltersPanel{display:grid!important;grid-template-columns:minmax(130px,.55fr) minmax(210px,1.15fr) minmax(210px,1.15fr) minmax(180px,.9fr) 116px!important;gap:12px!important;align-items:end!important;padding:16px!important}.hoursReportShell .hoursFiltersPanel label{min-width:0}.hoursReportShell .hoursFiltersPanel select,.hoursReportShell .hoursFiltersPanel input{min-width:0}.hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:16px auto!important}.hoursReportShell .hoursKpiGrid article{min-width:0;padding:16px!important}.hoursReportShell .hoursKpiGrid strong{font-size:clamp(24px,2vw,31px)!important}.hoursReportShell .panelHeader{padding:16px!important}.hoursReportShell .hoursTableWrap{overflow-x:auto}.hoursReportShell .hoursMatrixTable{width:100%;min-width:1180px!important;table-layout:fixed!important}.hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 8px!important;font-size:12px!important;line-height:1.25!important}.hoursReportShell .hoursMatrixTable th{letter-spacing:0!important;white-space:normal!important}.hoursReportShell .hoursMatrixTable th.number,.hoursReportShell .hoursMatrixTable td.number{width:62px!important}.hoursReportShell .hoursMatrixTable th:first-child{width:172px!important}.hoursReportShell .hoursMatrixTable th:nth-child(2){width:160px!important}.hoursReportShell .personGroupCell{width:172px!important;min-width:0!important}.hoursReportShell .complianceCell{width:120px!important;min-width:0!important}@media (max-width:1280px){.hoursReportShell .hoursFiltersPanel{grid-template-columns:repeat(2,minmax(0,1fr)) 116px!important}.hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}@media (max-width:900px){.hoursReportShell>section{width:calc(100% - 24px)!important}.hoursReportShell .hoursFiltersPanel,.hoursReportShell .hoursKpiGrid{grid-template-columns:1fr!important}.hoursReportShell .hoursMatrixTable{min-width:1080px!important}}`}</style></main>;
+  return (
+    <main className="shell reportShell hoursReportShell">
+      <nav className="topbar">
+        <Link className="brand" href="/">
+          <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
+          <span><strong>Inthegra Reports</strong><small>Reporte dinamico</small></span>
+        </Link>
+        <Link className="navLink" href="/">Inicio</Link>
+      </nav>
+
+      <section className="pageHeader">
+        <div>
+          <p className="eyebrow">ActivityTimeline + PGI</p>
+          <h1>Reporte de horas</h1>
+          <p>Horas por persona y por proyecto, agrupadas por tipo de actividad e incluyendo cargas PGI manuales.</p>
+        </div>
+        <span className={error || modelPending ? 'status error' : 'status'}>
+          {loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}
+        </span>
+      </section>
+
+      <section className="filtersPanel hoursFiltersPanel">
+        <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
+        <label>Proyecto<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label>
+        <label>Persona<select value={filters.personId} onChange={(event) => setFilters({ ...filters, personId: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.people || []).map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label>
+        <label>Actividad<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.eventTypes || []).map((item) => <option key={item.event_type} value={item.event_type}>{labelType(item.event_type)}</option>)}</select></label>
+        <label>Detalle booking<select value={filters.activityDetail} onChange={(event) => setFilters({ ...filters, activityDetail: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.activityDetails || []).map((item) => <option key={item.activity_detail_at} value={item.activity_detail_at}>{item.activity_detail_at}</option>)}</select></label>
+        <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
+      </section>
+
+      {error && <div className="errorBox">{error}</div>}
+      {modelPending && <div className="errorBox">{data.setupMessage}</div>}
+
+      <section className="kpiGrid hoursKpiGrid">
+        <article className="estimatedHoursCard"><span>Total estimado horas del mes</span><strong>{formatHours(estimatedTotal)}</strong><small>{selectedPeriod} · {formatHours(data?.summary?.personas)} personas · {businessDays} dias habiles</small></article>
+        <article><span>Horas total</span><strong>{formatHours(data?.summary?.horas)}</strong><small>{formatPercent(coveragePercent)} del estimado</small></article>
+        <article><span>Horas AT</span><strong>{formatHours(data?.summary?.horas_at)}</strong></article>
+        <article><span>PGI</span><strong>{formatHours(data?.summary?.horas_pgi)}</strong></article>
+        <article><span>Registros</span><strong>{formatHours(data?.summary?.registros)}</strong></article>
+      </section>
+
+      <section className="reportPanel">
+        <div className="panelHeader">
+          <div><h2>Distribucion por tipo de actividad</h2><p>{selectedPeriod}</p></div>
+          <div className="panelActions">
+            <div className="segmented">
+              <button className={view === 'persona' ? 'active' : ''} onClick={() => setView('persona')}>Personas</button>
+              <button className={view === 'equipo' ? 'active' : ''} onClick={() => setView('equipo')}>Proyectos</button>
+            </div>
+            <button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button>
+            <button className="primaryButton pgiLogButton" onClick={openPgiLog}>PGI Log</button>
+          </div>
+        </div>
+        {loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} expectedPerPerson={expectedPerPerson} />}
+      </section>
+
+      {pgiOpen && (
+        <div className="modalBackdrop">
+          <form className="pgiModal" onSubmit={savePgiLog}>
+            <header><div><p className="eyebrow">Carga manual</p><h2>PGI Log</h2></div><button type="button" className="secondaryButton" onClick={() => setPgiOpen(false)}>Cerrar</button></header>
+            {pgiError && <div className="errorBox compactError">{pgiError}</div>}
+            <label>Proyecto<select value={pgiForm.projectId} disabled={pgiRefs.projects.length === 1} onChange={(event) => setPgiForm({ ...pgiForm, projectId: event.target.value })} required><option value="">Seleccionar proyecto</option>{pgiRefs.projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label>
+            <label>Persona<select value={pgiForm.personId} onChange={(event) => setPgiForm({ ...pgiForm, personId: event.target.value })} required><option value="">Seleccionar persona</option>{pgiRefs.people.map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label>
+            <label>Tipo de incidencia<select value={pgiForm.incidenceType} onChange={(event) => setPgiForm({ ...pgiForm, incidenceType: event.target.value })} required>{(pgiRefs.incidenceTypes.length ? pgiRefs.incidenceTypes : [{ key: 'pgi', label: 'PGI general' }, { key: 'day_off', label: 'Day off' }, { key: 'holiday', label: 'Vacaciones' }, { key: 'overtime', label: 'Horas extras' }]).map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}</select></label>
+            <label>Fecha<input type="date" value={pgiForm.fecha} onChange={(event) => setPgiForm({ ...pgiForm, fecha: event.target.value })} required /></label>
+            <label>Horas<input type="number" min="0.25" max="24" step="0.25" value={pgiForm.horas} onChange={(event) => setPgiForm({ ...pgiForm, horas: event.target.value })} required /></label>
+            <label>Comentario<input type="text" placeholder="Opcional" value={pgiForm.comentario} onChange={(event) => setPgiForm({ ...pgiForm, comentario: event.target.value })} /></label>
+            <footer><button type="submit" className="primaryButton" disabled={pgiSaving}>{pgiSaving ? 'Guardando...' : 'Guardar PGI'}</button></footer>
+          </form>
+        </div>
+      )}
+
+      <style jsx global>{`
+        .hoursReportShell{padding-bottom:32px}
+        .hoursReportShell>section{width:min(1560px,calc(100% - 48px))!important;max-width:none;margin-left:auto!important;margin-right:auto!important}
+        .hoursReportShell .pageHeader{padding:30px 0 18px!important}
+        .hoursReportShell .pageHeader h1{font-size:clamp(32px,3.2vw,46px)!important}
+        .hoursReportShell .pageHeader p{max-width:980px}
+        .hoursReportShell .hoursFiltersPanel{display:grid!important;grid-template-columns:minmax(110px,.45fr) minmax(180px,1fr) minmax(180px,1fr) minmax(150px,.8fr) minmax(180px,1fr) 116px!important;gap:12px!important;align-items:end!important;padding:16px!important}
+        .hoursReportShell .hoursFiltersPanel label{min-width:0}
+        .hoursReportShell .hoursFiltersPanel select,.hoursReportShell .hoursFiltersPanel input{min-width:0}
+        .hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:16px auto!important}
+        .hoursReportShell .hoursKpiGrid article{min-width:0;padding:16px!important}
+        .hoursReportShell .hoursKpiGrid article small{display:block;margin-top:6px;color:var(--muted);line-height:1.35}
+        .hoursReportShell .hoursKpiGrid strong{font-size:clamp(24px,2vw,31px)!important}
+        .estimatedHoursCard{border-color:#ffb074;background:#fff7f0}
+        .hoursReportShell .panelHeader{padding:16px!important}
+        .hoursReportShell .hoursTableWrap{overflow-x:auto}
+        .hoursReportShell .hoursMatrixTable{width:100%;min-width:1180px!important;table-layout:fixed!important}
+        .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 8px!important;font-size:12px!important;line-height:1.25!important}
+        .hoursReportShell .hoursMatrixTable th{letter-spacing:0!important;white-space:normal!important}
+        .hoursReportShell .hoursMatrixTable th.number,.hoursReportShell .hoursMatrixTable td.number{width:62px!important}
+        .hoursReportShell .hoursMatrixTable th:first-child{width:172px!important}
+        .hoursReportShell .hoursMatrixTable th:nth-child(2){width:160px!important}
+        .hoursReportShell .personGroupCell{width:172px!important;min-width:0!important;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}
+        .personGroupCell strong,.personGroupCell small,.complianceCell small{display:block}
+        .personGroupCell small,.complianceCell small{margin-top:5px;color:var(--muted);font-size:11px;font-weight:700}
+        .hoursReportShell .complianceCell{width:120px!important;min-width:0!important;vertical-align:top}
+        .hoursCompliance{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}
+        .hoursCompliance.ok{background:#eef9f0;color:#237a35}
+        .hoursCompliance.warning{background:#fff4e8;color:#b85c00}
+        .hoursCompliance.danger{background:#fff0f0;color:#b42318}
+        .personStatus-ok .personGroupCell{border-left:4px solid var(--green)}
+        .personStatus-warning .personGroupCell{border-left:4px solid var(--orange)}
+        .personStatus-danger .personGroupCell{border-left:4px solid var(--red)}
+        .pgiColumn{background:#fff8f1}
+        .pgiLogButton{min-height:38px;padding:0 18px;box-shadow:0 8px 20px rgba(255,106,0,.18)}
+        .modalBackdrop{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(8,17,31,.42)}
+        .pgiModal{width:min(560px,100%);display:grid;gap:14px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:22px;box-shadow:0 24px 70px rgba(15,32,67,.24)}
+        .pgiModal header,.pgiModal footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .pgiModal h2{margin:0}
+        .pgiModal label{display:grid;gap:7px;color:var(--muted);font-size:13px;font-weight:800}
+        .pgiModal input,.pgiModal select{width:100%;min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:0 10px}
+        .compactError{width:100%;margin:0;padding:12px}
+        @media (max-width:1280px){.hoursReportShell .hoursFiltersPanel{grid-template-columns:repeat(2,minmax(0,1fr)) 116px!important}.hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+        @media (max-width:900px){.hoursReportShell>section{width:calc(100% - 24px)!important}.hoursReportShell .hoursFiltersPanel,.hoursReportShell .hoursKpiGrid{grid-template-columns:1fr!important}.hoursReportShell .hoursMatrixTable{min-width:1080px!important}.pgiModal header,.pgiModal footer{align-items:flex-start;flex-direction:column}}
+      `}</style>
+    </main>
+  );
 }

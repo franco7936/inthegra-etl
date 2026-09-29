@@ -24,6 +24,7 @@ La vista `VW_REPORTE_HORAS_DETALLE` expone:
 - `horas_at`: horas provenientes de ActivityTimeline.
 - `horas_pgi`: horas cargadas manualmente en PGI.
 - `tiempo_empleado`: total usado por el reporte, calculado como AT + PGI segun la fila.
+- `activity_detail_at`: detalle operativo del evento. Para `booking`, el ETL lo deriva del texto posterior al separador `|` dentro de `summary`.
 
 ## PGI Log
 
@@ -47,6 +48,7 @@ El reporte permite filtrar por:
 - Proyecto
 - Persona
 - Tipo de actividad
+- Detalle booking
 
 El selector de mes calcula automaticamente el rango completo:
 
@@ -108,4 +110,4 @@ El archivo se genera en el navegador como `.xls` compatible con Excel, sin agreg
 - `VW_REPORTE_HORAS_PERSONA_TIPO`
 - `VW_REPORTE_HORAS_EQUIPO_TIPO`
 
-Estas vistas se refrescan desde `etl_runner_v4.py`.
+Estas vistas se refrescan desde `etl_runner.py`.
