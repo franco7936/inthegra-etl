@@ -294,7 +294,7 @@ export default function ReporteHorasPage() {
         .estimatedHoursCard{border-color:#ffb074;background:#fff7f0}
         .hoursReportShell .panelHeader{padding:16px!important}
         .hoursReportShell .hoursTableWrap{overflow-x:auto}
-        .hoursReportShell .hoursMatrixTable{width:100%;min-width:1540px!important;table-layout:fixed!important}
+        .hoursReportShell .hoursMatrixTable{width:max-content!important;min-width:0!important;table-layout:fixed!important}
         .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 10px!important;font-size:12px!important;line-height:1.25!important}
         .hoursReportShell .hoursMatrixTable th{letter-spacing:0!important;white-space:normal!important;overflow-wrap:normal!important;font-size:11px!important}
         .hoursReportShell .hoursMatrixTable th.number,.hoursReportShell .hoursMatrixTable td.number{width:82px!important}
