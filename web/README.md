@@ -4,6 +4,20 @@ Aplicacion dinamica del portal de reportes.
 
 Esta app usa Next.js y consulta Turso desde API routes del lado servidor. El navegador nunca recibe `TURSO_TOKEN`.
 
+## Frontend y diseño
+
+El frontend esta migrando a un sistema visual responsive por etapas.
+
+Stack base:
+
+- Tailwind CSS para layout responsive y utilidades de diseno.
+- Lucide React para iconografia consistente.
+- Recharts para graficos de reportes.
+- TanStack Table para evolucionar las grillas de datos.
+- Componentes propios reutilizables sobre la identidad visual de Inthegra.
+
+La primera pantalla migrada parcialmente es `Reporte de horas`: incorpora iconos en acciones, tabla con encabezado fijo y columnas finales fijas para mejorar lectura en pantallas chicas.
+
 ## Deploy gratis en Vercel
 
 Al importar el repositorio en Vercel usar:

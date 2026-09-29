@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Download, Filter, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 function monthRange(monthValue) {
@@ -233,7 +234,7 @@ export default function ReporteHorasPage() {
         <label>Persona<select value={filters.personId} onChange={(event) => setFilters({ ...filters, personId: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.people || []).map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label>
         <label>Actividad<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.eventTypes || []).map((item) => <option key={item.event_type} value={item.event_type}>{labelType(item.event_type)}</option>)}</select></label>
         <label>Detalle booking<select value={filters.activityDetail} onChange={(event) => setFilters({ ...filters, activityDetail: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.activityDetails || []).map((item) => <option key={item.activity_detail_at} value={item.activity_detail_at}>{item.activity_detail_at}</option>)}</select></label>
-        <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
+        <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
       </section>
 
       {error && <div className="errorBox">{error}</div>}
@@ -255,8 +256,8 @@ export default function ReporteHorasPage() {
               <button className={view === 'persona' ? 'active' : ''} onClick={() => setView('persona')}>Personas</button>
               <button className={view === 'equipo' ? 'active' : ''} onClick={() => setView('equipo')}>Proyectos</button>
             </div>
-            <button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button>
-            <button className="primaryButton pgiLogButton" onClick={openPgiLog}>PGI Log</button>
+            <button className="secondaryButton reportIconButton" disabled={!canExport} onClick={handleExport}><Download size={16} />Exportar Excel</button>
+            <button className="primaryButton pgiLogButton reportIconButton" onClick={openPgiLog}><Plus size={16} />PGI Log</button>
           </div>
         </div>
         {loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} expectedPerPerson={expectedPerPerson} />}
@@ -293,7 +294,8 @@ export default function ReporteHorasPage() {
         .hoursReportShell .hoursKpiGrid strong{font-size:clamp(24px,2vw,31px)!important}
         .estimatedHoursCard{border-color:#ffb074;background:#fff7f0}
         .hoursReportShell .panelHeader{padding:16px!important}
-        .hoursReportShell .hoursTableWrap{overflow-x:auto}
+        .reportIconButton{gap:8px}
+        .hoursReportShell .hoursTableWrap{overflow:auto;max-width:100%;max-height:calc(100vh - 270px);border-top:1px solid var(--line)}
         .hoursReportShell .hoursMatrixTable{width:max-content!important;min-width:0!important;table-layout:fixed!important}
         .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 10px!important;font-size:12px!important;line-height:1.25!important}
         .hoursReportShell .hoursMatrixTable th{letter-spacing:0!important;white-space:normal!important;overflow-wrap:normal!important;font-size:11px!important}
@@ -301,6 +303,11 @@ export default function ReporteHorasPage() {
         .hoursReportShell .hoursMatrixTable th:first-child{width:210px!important}
         .hoursReportShell .hoursMatrixTable th:nth-child(2){width:180px!important}
         .hoursReportShell .hoursMatrixTable th:last-child,.hoursReportShell .hoursMatrixTable td:last-child{width:92px!important}
+        .hoursReportShell .hoursMatrixTable thead th{position:sticky;top:0;z-index:2;background:#fff}
+        .hoursReportShell .hoursMatrixTable th:last-child,.hoursReportShell .hoursMatrixTable td:last-child{position:sticky;right:0;z-index:1;background:#fff}
+        .hoursReportShell .hoursMatrixTable th:last-child{z-index:3}
+        .hoursReportShell .hoursMatrixTable th:nth-last-child(2),.hoursReportShell .hoursMatrixTable td:nth-last-child(2){position:sticky;right:92px;z-index:1;background:#fff}
+        .hoursReportShell .hoursMatrixTable th:nth-last-child(2){z-index:3}
         .hoursReportShell .personGroupCell{width:210px!important;min-width:0!important;border-right:1px solid var(--line);background:#f9fbfe;vertical-align:top}
         .personGroupCell strong,.personGroupCell small,.complianceCell small{display:block}
         .personGroupCell small,.complianceCell small{margin-top:5px;color:var(--muted);font-size:11px;font-weight:700}
