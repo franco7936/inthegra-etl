@@ -224,6 +224,8 @@ td { color: #263247; }
 .laborBadge { display: inline-flex; width: max-content; min-height: 28px; align-items: center; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 900; }
 .laborBadge.type-day_off { background: #e9f3ff; color: var(--blue); }
 .laborBadge.type-holiday { background: #eef9f0; color: #237a35; }
+.laborBadge.type-sick_leave { background: #fff0f0; color: var(--red); }
+.laborBadge.type-vacation { background: #fff1e8; color: var(--orange-dark); }
 .laborBadge.type-overtime { background: #fff1e8; color: var(--orange-dark); }
 .laborDetailPanel { margin-top: 20px; }
 .laborTable { min-width: 840px; }

@@ -63,7 +63,7 @@ Regla del proyecto: todo dato que se exponga al front debe salir de una vista SQ
 | `VW_REPORTE_HORAS_DETALLE` | Detalle base con persona, proyecto, tipo de evento y tiempo. |
 | `VW_REPORTE_HORAS_PERSONA_TIPO` | Agrupacion por fecha, persona, proyecto y tipo de actividad. |
 | `VW_REPORTE_HORAS_EQUIPO_TIPO` | Agrupacion por fecha, proyecto/equipo y tipo de actividad. |
-| `VW_NOVEDADES_LABORALES` | Day off, feriados y horas extras por persona y por equipo. |
+| `VW_NOVEDADES_LABORALES` | Day off, holiday, sick leave y vacation por persona y por equipo. |
 | `VW_STATUS_SEMANAL_LIDERES` | Reporte semanal de status informado por lideres. |
 | `VW_INDICADORES_ENTREGA_CALIDAD` | Indicadores ejecutivos de entrega, horas, soporte, SLA, roadmap y retrabajo. |
 | `VW_INVERSION_ESTRATEGICA` | Horas destinadas agrupadas por proyecto y epica. |
@@ -99,7 +99,7 @@ Pantallas:
 | --- | --- |
 | `/` | Home del portal. |
 | `/reportes/horas` | Reporte dinamico de horas. |
-| `/reportes/novedades-laborales` | Day off, feriados y horas extras por persona y equipo. |
+| `/reportes/novedades-laborales` | Day off, holiday, sick leave y vacation por persona y equipo. |
 | `/reportes/status-semanal` | Reporte semanal de lideres con avances, riesgos, bloqueos y proximos pasos. |
 | `/reportes/entrega-calidad` | Indicadores de Entrega y Calidad de Servicio. |
 | `/reportes/inversion-estrategica` | Inversiones Estrategicas por proyecto y epica. |
@@ -132,7 +132,7 @@ La pantalla permite filtrar por semana y equipo. Presenta resumen general, semaf
 
 ## Contrato esperado para `VW_NOVEDADES_LABORALES`
 
-Este reporte toma datos de ActivityTimeline desde `at_workload` y muestra solamente novedades laborales: `day_off`, `holiday` y horas extras.
+Este reporte toma datos de ActivityTimeline desde `at_workload` y PGI desde `pgi_workload`. Muestra solamente novedades laborales: `day_off`, `holiday`, `sick_leave` y `vacation`.
 
 Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.
 
@@ -145,12 +145,14 @@ Columnas esperadas:
 | `persona` | Nombre visible de la persona. |
 | `project_id` | Proyecto/equipo normalizado desde `map_equipo_proyecto`. |
 | `equipo` | Nombre visible del equipo. |
-| `event_type` | Tipo tecnico: `day_off`, `holiday` u `overtime`. |
-| `event_label` | Nombre visible: `Day off`, `Holiday`, `Horas extras`. |
-| `horas` | Horas asociadas a la novedad. |
+| `fecha_fin` | Fecha final calculada del rango. Si la fuente informa fin exclusivo, se toma hasta el dia anterior. |
+| `event_type` | Tipo tecnico: `day_off`, `holiday`, `sick_leave` o `vacation`. |
+| `event_label` | Nombre visible: `Day off`, `Holiday`, `Sick leave`, `Vacation`. |
+| `dias` | Dias laborales del rango, contando lunes a viernes. |
+| `horas` | Horas equivalentes. Si la fuente no trae horas, se calcula `dias * 8`. |
 | `registros` | Cantidad de registros agrupados. |
 
-La pantalla permite filtrar por fecha, equipo y tipo de novedad. Presenta resumen general, distribucion por tipo, agrupacion por persona, agrupacion por equipo y detalle.
+La pantalla permite filtrar por mes, equipo y tipo de novedad. Presenta resumen general, distribucion por tipo, agrupacion por persona, agrupacion por equipo y detalle con dias y horas.
 
 ## Contrato esperado para `VW_QA_METRICAS_MINIMAS`
 

@@ -34,6 +34,10 @@ function formatHours(value) {
   return `${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(Number(value || 0))} hs`;
 }
 
+function formatDays(value) {
+  return `${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(Number(value || 0))} dias`;
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
@@ -58,21 +62,22 @@ function downloadExcel({ data, filters, viewMode, rows, filterLabels }) {
   ];
 
   const summaryRows = [
+    ['Dias laborales', Number(data?.summary?.dias || 0).toFixed(2)],
     ['Horas registradas', Number(data?.summary?.horas || 0).toFixed(2)],
     ['Novedades', data?.summary?.registros || 0],
     ['Personas', data?.summary?.personas || 0],
     ['Equipos', data?.summary?.equipos || 0],
   ];
 
-  const typeRows = (data?.byType || []).map((item) => [item.event_label || item.event_type, Number(item.horas || 0).toFixed(2), item.registros || 0]);
+  const typeRows = (data?.byType || []).map((item) => [item.event_label || item.event_type, Number(item.dias || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]);
   const groupedRows = rows.map((item) => viewMode === 'personas'
-    ? [item.persona, item.equipo, Number(item.day_off || 0).toFixed(2), Number(item.holiday || 0).toFixed(2), Number(item.overtime || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]
-    : [item.equipo, Number(item.day_off || 0).toFixed(2), Number(item.holiday || 0).toFixed(2), Number(item.overtime || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]
+    ? [item.persona, item.equipo, Number(item.day_off_dias || 0).toFixed(2), Number(item.holiday_dias || 0).toFixed(2), Number(item.sick_leave_dias || 0).toFixed(2), Number(item.vacation_dias || 0).toFixed(2), Number(item.dias || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]
+    : [item.equipo, Number(item.day_off_dias || 0).toFixed(2), Number(item.holiday_dias || 0).toFixed(2), Number(item.sick_leave_dias || 0).toFixed(2), Number(item.vacation_dias || 0).toFixed(2), Number(item.dias || 0).toFixed(2), Number(item.horas || 0).toFixed(2), item.registros || 0]
   );
-  const detailRows = (data?.detail || []).map((row) => [row.fecha, row.persona, row.equipo, row.event_label || row.event_type, Number(row.horas || 0).toFixed(2), row.registros || 0]);
-  const groupedHeaders = viewMode === 'personas' ? ['Persona', 'Equipo', 'Day off', 'Vacaciones', 'Horas extras', 'Total horas', 'Novedades'] : ['Equipo', 'Day off', 'Vacaciones', 'Horas extras', 'Total horas', 'Novedades'];
+  const detailRows = (data?.detail || []).map((row) => [row.fecha, row.fecha_fin || row.fecha, row.persona, row.equipo, row.event_label || row.event_type, Number(row.dias || 0).toFixed(2), Number(row.horas || 0).toFixed(2), row.registros || 0]);
+  const groupedHeaders = viewMode === 'personas' ? ['Persona', 'Equipo', 'Day off dias', 'Holiday dias', 'Sick leave dias', 'Vacation dias', 'Total dias', 'Total horas', 'Novedades'] : ['Equipo', 'Day off dias', 'Holiday dias', 'Sick leave dias', 'Vacation dias', 'Total dias', 'Total horas', 'Novedades'];
 
-  const html = `<html><head><meta charset="UTF-8" /><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:18px}th{background:#ff6a00;color:#fff;font-weight:bold}th,td{border:1px solid #d9e2ef;padding:8px}td.number{mso-number-format:"0.00";text-align:right}h1,h2{color:#0f2043}</style></head><body><h1>Reporte de novedades laborales</h1><h2>Filtros</h2>${tableHtml(['Filtro','Valor'], filterRows, 2)}<h2>Resumen</h2>${tableHtml(['Indicador','Valor'], summaryRows, 1)}<h2>Distribucion por tipo</h2>${tableHtml(['Tipo','Horas','Novedades'], typeRows, 1)}<h2>${viewMode === 'personas' ? 'Agrupado por persona' : 'Agrupado por equipo'}</h2>${tableHtml(groupedHeaders, groupedRows, viewMode === 'personas' ? 2 : 1)}<h2>Detalle</h2>${tableHtml(['Fecha','Persona','Equipo','Tipo','Horas','Novedades'], detailRows, 4)}</body></html>`;
+  const html = `<html><head><meta charset="UTF-8" /><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:18px}th{background:#ff6a00;color:#fff;font-weight:bold}th,td{border:1px solid #d9e2ef;padding:8px}td.number{mso-number-format:"0.00";text-align:right}h1,h2{color:#0f2043}</style></head><body><h1>Reporte de novedades laborales</h1><h2>Filtros</h2>${tableHtml(['Filtro','Valor'], filterRows, 2)}<h2>Resumen</h2>${tableHtml(['Indicador','Valor'], summaryRows, 1)}<h2>Distribucion por tipo</h2>${tableHtml(['Tipo','Dias','Horas','Novedades'], typeRows, 1)}<h2>${viewMode === 'personas' ? 'Agrupado por persona' : 'Agrupado por equipo'}</h2>${tableHtml(groupedHeaders, groupedRows, viewMode === 'personas' ? 2 : 1)}<h2>Detalle</h2>${tableHtml(['Desde','Hasta','Persona','Equipo','Tipo','Dias','Horas','Novedades'], detailRows, 5)}</body></html>`;
 
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -122,9 +127,9 @@ export default function NovedadesLaboralesPage() {
   useEffect(() => { loadData(); }, []);
 
   const modelPending = data && data.modelReady === false;
-  const maxTypeHours = useMemo(() => Math.max(...(data?.byType || []).map((item) => Number(item.horas || 0)), 0), [data]);
+  const maxTypeHours = useMemo(() => Math.max(...(data?.byType || []).map((item) => Number(item.dias || 0)), 0), [data]);
   const rows = viewMode === 'personas' ? data?.byPerson || [] : data?.byTeam || [];
-  const maxRowHours = useMemo(() => Math.max(...rows.map((item) => Number(item.horas || 0)), 0), [rows]);
+  const maxRowHours = useMemo(() => Math.max(...rows.map((item) => Number(item.dias || 0)), 0), [rows]);
   const selectedProject = (data?.filtersData?.projects || []).find((project) => String(project.project_id) === String(filters.projectId));
   const selectedEventType = (data?.filtersData?.eventTypes || []).find((type) => String(type.event_type) === String(filters.eventType));
   const canExport = !loading && !error && Boolean(data) && ((data?.detail || []).length > 0 || rows.length > 0);
@@ -141,7 +146,7 @@ export default function NovedadesLaboralesPage() {
   return (
     <main className="shell laborShell">
       <nav className="topbar"><Link className="brand" href="/"><img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" /><span><strong>Inthegra Reports</strong><small>Novedades laborales</small></span></Link><Link className="navLink" href="/">Inicio</Link></nav>
-      <section className="qualityHeader laborHeader"><div><p className="eyebrow">ActivityTimeline</p><h1>Reporte de novedades laborales</h1><p>Seguimiento de day off, vacaciones y horas extras por persona y por equipo dentro del mes seleccionado.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section>
+      <section className="qualityHeader laborHeader"><div><p className="eyebrow">ActivityTimeline</p><h1>Reporte de novedades laborales</h1><p>Seguimiento de day off, holiday, sick leave y vacation por persona y por equipo dentro del mes seleccionado.</p></div><span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span></section>
       <section className="filtersPanel">
         <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
         <label>Equipo<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos los equipos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.equipo}</option>)}</select></label>
@@ -150,13 +155,13 @@ export default function NovedadesLaboralesPage() {
         <button className="secondaryButton" disabled={!canExport} onClick={handleExport}>Exportar Excel</button>
       </section>
       {error && <div className="errorBox">{error}</div>}{modelPending && <div className="errorBox">{data.setupMessage}</div>}{data?.demo && <div className="warningBox">Vista previa con datos de referencia. Los valores reales se activan cuando exista la vista SQL.</div>}
-      {!loading && !error && !modelPending && !hasReportRows && <section className="laborPlaceholder"><strong>Sin novedades para mostrar</strong><span>No encontramos day off, vacaciones u horas extras para {monthTitle(filters.month)} con los filtros aplicados.</span></section>}
-      <section className="laborOverview"><article><span>Horas registradas</span><strong>{formatHours(data?.summary?.horas)}</strong></article><article><span>Novedades</span><strong>{data?.summary?.registros || 0}</strong></article><article><span>Personas</span><strong>{data?.summary?.personas || 0}</strong></article><article><span>Equipos</span><strong>{data?.summary?.equipos || 0}</strong></article></section>
+      {!loading && !error && !modelPending && !hasReportRows && <section className="laborPlaceholder"><strong>Sin novedades para mostrar</strong><span>No encontramos day off, holiday, sick leave o vacation para {monthTitle(filters.month)} con los filtros aplicados.</span></section>}
+      <section className="laborOverview"><article><span>Dias laborales</span><strong>{formatDays(data?.summary?.dias)}</strong></article><article><span>Horas equivalentes</span><strong>{formatHours(data?.summary?.horas)}</strong></article><article><span>Personas</span><strong>{data?.summary?.personas || 0}</strong></article><article><span>Equipos</span><strong>{data?.summary?.equipos || 0}</strong></article></section>
       <section className="laborCharts">
-        <article className="laborPanel"><div className="panelHeader"><div><h2>Distribucion por tipo</h2><p>{monthTitle(filters.month)}</p></div></div><div className="laborTypeList">{(data?.byType || []).map((item) => <div className="laborTypeRow" key={item.event_type}><TypeBadge type={item.event_type} label={item.event_label} /><MiniBar value={item.horas} max={maxTypeHours} /><strong>{formatHours(item.horas)}</strong></div>)}{!loading && !(data?.byType || []).length && <div className="emptyState">Sin novedades para el mes.</div>}</div></article>
-        <article className="laborPanel"><div className="panelHeader"><div><h2>{viewMode === 'personas' ? 'Por persona' : 'Por equipo'}</h2><p>Agrupado por horas registradas</p></div><div className="segmented"><button className={viewMode === 'personas' ? 'active' : ''} onClick={() => setViewMode('personas')}>Personas</button><button className={viewMode === 'equipos' ? 'active' : ''} onClick={() => setViewMode('equipos')}>Equipos</button></div></div><div className="laborRankList">{rows.map((item) => <div className="laborRankRow" key={`${viewMode}-${item.person_id || item.project_id}-${item.equipo}`}><div><strong>{viewMode === 'personas' ? item.persona : item.equipo}</strong><small>{viewMode === 'personas' ? item.equipo : `${item.registros} novedades`}</small></div><MiniBar value={item.horas} max={maxRowHours} /><span>{formatHours(item.horas)}</span></div>)}{!loading && !rows.length && <div className="emptyState">Sin datos agrupados para mostrar.</div>}</div></article>
+        <article className="laborPanel"><div className="panelHeader"><div><h2>Distribucion por tipo</h2><p>{monthTitle(filters.month)}</p></div></div><div className="laborTypeList">{(data?.byType || []).map((item) => <div className="laborTypeRow" key={item.event_type}><TypeBadge type={item.event_type} label={item.event_label} /><MiniBar value={item.dias} max={maxTypeHours} /><strong>{formatDays(item.dias)} · {formatHours(item.horas)}</strong></div>)}{!loading && !(data?.byType || []).length && <div className="emptyState">Sin novedades para el mes.</div>}</div></article>
+        <article className="laborPanel"><div className="panelHeader"><div><h2>{viewMode === 'personas' ? 'Por persona' : 'Por equipo'}</h2><p>Agrupado por dias laborales</p></div><div className="segmented"><button className={viewMode === 'personas' ? 'active' : ''} onClick={() => setViewMode('personas')}>Personas</button><button className={viewMode === 'equipos' ? 'active' : ''} onClick={() => setViewMode('equipos')}>Equipos</button></div></div><div className="laborRankList">{rows.map((item) => <div className="laborRankRow" key={`${viewMode}-${item.person_id || item.project_id}-${item.equipo}`}><div><strong>{viewMode === 'personas' ? item.persona : item.equipo}</strong><small>{viewMode === 'personas' ? item.equipo : `${item.registros} novedades`}</small></div><MiniBar value={item.dias} max={maxRowHours} /><span>{formatDays(item.dias)} · {formatHours(item.horas)}</span></div>)}{!loading && !rows.length && <div className="emptyState">Sin datos agrupados para mostrar.</div>}</div></article>
       </section>
-      <section className="laborPanel laborDetailPanel"><div className="panelHeader"><div><h2>Detalle de novedades</h2><p>Registros de {monthTitle(filters.month)}</p></div></div>{loading ? <div className="emptyState">Cargando novedades laborales...</div> : <div className="tableWrap"><table className="laborTable"><thead><tr><th>Fecha</th><th>Persona</th><th>Equipo</th><th>Tipo</th><th className="number">Horas</th></tr></thead><tbody>{(data?.detail || []).map((row, index) => <tr key={`${row.fecha}-${row.person_id}-${row.project_id}-${row.event_type}-${index}`}><td>{row.fecha}</td><td>{row.persona}</td><td>{row.equipo}</td><td><TypeBadge type={row.event_type} label={row.event_label} /></td><td className="number"><strong>{formatHours(row.horas)}</strong></td></tr>)}</tbody></table>{!loading && !(data?.detail || []).length && <div className="emptyState">Sin detalle para el mes seleccionado.</div>}</div>}</section>
+      <section className="laborPanel laborDetailPanel"><div className="panelHeader"><div><h2>Detalle de novedades</h2><p>Registros de {monthTitle(filters.month)}</p></div></div>{loading ? <div className="emptyState">Cargando novedades laborales...</div> : <div className="tableWrap"><table className="laborTable"><thead><tr><th>Desde</th><th>Hasta</th><th>Persona</th><th>Equipo</th><th>Tipo</th><th className="number">Dias</th><th className="number">Horas</th></tr></thead><tbody>{(data?.detail || []).map((row, index) => <tr key={`${row.fecha}-${row.person_id}-${row.project_id}-${row.event_type}-${index}`}><td>{row.fecha}</td><td>{row.fecha_fin || row.fecha}</td><td>{row.persona}</td><td>{row.equipo}</td><td><TypeBadge type={row.event_type} label={row.event_label} /></td><td className="number"><strong>{formatDays(row.dias)}</strong></td><td className="number"><strong>{formatHours(row.horas)}</strong></td></tr>)}</tbody></table>{!loading && !(data?.detail || []).length && <div className="emptyState">Sin detalle para el mes seleccionado.</div>}</div>}</section>
     </main>
   );
 }

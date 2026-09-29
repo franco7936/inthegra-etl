@@ -10,7 +10,7 @@ WITH RECURSIVE eventos_at AS (
         COALESCE(mp.full_name_at, mp.user_name_rpt, 'Sin persona') AS persona,
         w.project_id,
         COALESCE(me.nombre_rpt, me.nombre_at, 'Sin equipo') AS equipo,
-        LOWER(TRIM(COALESCE(w.event_type, ''))) AS event_type_raw,
+        LOWER(REPLACE(TRIM(COALESCE(w.event_type, '')), ' ', '_')) AS event_type_raw,
         LOWER(TRIM(COALESCE(w.summary, ''))) AS summary_raw,
         COALESCE(w.tiempo_empleado, w.orig_estimate, 0) AS horas_base,
         'AT' AS fuente
@@ -27,7 +27,7 @@ WITH RECURSIVE eventos_at AS (
         COALESCE(mp.full_name_at, mp.user_name_rpt, 'Sin persona') AS persona,
         p.project_id,
         COALESCE(me.nombre_rpt, me.nombre_at, 'Sin equipo') AS equipo,
-        LOWER(TRIM(COALESCE(p.incidence_type, 'pgi'))) AS event_type_raw,
+        LOWER(REPLACE(TRIM(COALESCE(p.incidence_type, 'pgi')), ' ', '_')) AS event_type_raw,
         LOWER(TRIM(COALESCE(p.comentario, ''))) AS summary_raw,
         COALESCE(p.horas, 0) AS horas_base,
         'PGI' AS fuente
@@ -35,7 +35,7 @@ WITH RECURSIVE eventos_at AS (
     LEFT JOIN map_personas mp ON mp.person_id = p.person_id
     LEFT JOIN map_equipo_proyecto me ON me.project_id = p.project_id
     WHERE COALESCE(p.activo, 1) = 1
-      AND LOWER(TRIM(COALESCE(p.incidence_type, 'pgi'))) IN ('day_off', 'holiday', 'overtime')
+      AND LOWER(REPLACE(TRIM(COALESCE(p.incidence_type, 'pgi')), ' ', '_')) IN ('day_off', 'holiday', 'sick_leave', 'vacation')
 ), eventos AS (
     SELECT * FROM eventos_at
     UNION ALL
@@ -47,32 +47,34 @@ WITH RECURSIVE eventos_at AS (
         CASE
             WHEN fecha_fin_raw IS NOT NULL AND fecha_fin_raw > fecha THEN date(fecha_fin_raw, '-1 day')
             ELSE fecha
-        END AS fecha_fin_inclusiva,
+        END AS fecha_fin,
         person_id,
         persona,
         project_id,
         equipo,
         fuente,
         CASE
-            WHEN event_type_raw IN ('day_off', 'day off', 'day-off', 'dayoff', 'time off', 'time_off')
+            WHEN event_type_raw IN ('day_off', 'day-off', 'dayoff', 'time_off')
                 OR summary_raw LIKE '%day off%'
                 OR summary_raw LIKE '%day-off%'
                 THEN 'day_off'
-            WHEN event_type_raw IN ('holiday', 'feriado', 'festivo', 'vacation', 'vacations', 'vacacion', 'vacación', 'vacaciones', 'vacation day', 'vacation_day', 'pto', 'paid time off', 'paid_time_off')
+            WHEN event_type_raw IN ('holiday', 'feriado', 'festivo')
                 OR summary_raw LIKE '%holiday%'
                 OR summary_raw LIKE '%feriado%'
                 OR summary_raw LIKE '%festivo%'
+                THEN 'holiday'
+            WHEN event_type_raw IN ('sick_leave', 'sickleave', 'sick', 'medical_leave', 'licencia_medica')
+                OR summary_raw LIKE '%sick leave%'
+                OR summary_raw LIKE '%licencia medica%'
+                OR summary_raw LIKE '%licencia médica%'
+                THEN 'sick_leave'
+            WHEN event_type_raw IN ('vacation', 'vacations', 'vacacion', 'vacación', 'vacaciones', 'vacation_day', 'pto', 'paid_time_off')
                 OR summary_raw LIKE '%vacation%'
                 OR summary_raw LIKE '%vacacion%'
                 OR summary_raw LIKE '%vacación%'
                 OR summary_raw LIKE '%vacaciones%'
                 OR summary_raw LIKE '%pto%'
-                THEN 'holiday'
-            WHEN event_type_raw IN ('overtime', 'extra_hours', 'extra hours', 'horas_extra', 'horas extras')
-                OR summary_raw LIKE '%overtime%'
-                OR summary_raw LIKE '%hora extra%'
-                OR summary_raw LIKE '%horas extras%'
-                THEN 'overtime'
+                THEN 'vacation'
             ELSE NULL
         END AS event_type,
         horas_base
@@ -81,38 +83,41 @@ WITH RECURSIVE eventos_at AS (
 ), dias(registro_id, dia) AS (
     SELECT registro_id, fecha
     FROM normalizados
-    WHERE event_type IN ('day_off', 'holiday')
+    WHERE event_type IN ('day_off', 'holiday', 'sick_leave', 'vacation')
     UNION ALL
     SELECT d.registro_id, date(d.dia, '+1 day')
     FROM dias d
     JOIN normalizados n ON n.registro_id = d.registro_id
-    WHERE d.dia < n.fecha_fin_inclusiva
+    WHERE d.dia < n.fecha_fin
 ), dias_laborables AS (
     SELECT
         registro_id,
-        SUM(CASE WHEN CAST(strftime('%w', dia) AS INTEGER) BETWEEN 1 AND 5 THEN 1 ELSE 0 END) AS dias_laborables
+        SUM(CASE WHEN CAST(strftime('%w', dia) AS INTEGER) BETWEEN 1 AND 5 THEN 1 ELSE 0 END) AS dias
     FROM dias
     GROUP BY registro_id
 ), calculados AS (
     SELECT
+        n.registro_id,
         n.fecha,
+        n.fecha_fin,
         n.person_id,
         n.persona,
         n.project_id,
         n.equipo,
         n.event_type,
         n.fuente,
+        COALESCE(dl.dias, 0) AS dias,
         CASE
-            WHEN n.event_type IN ('day_off', 'holiday') AND COALESCE(n.horas_base, 0) <= 0
-                THEN COALESCE(dl.dias_laborables, 0) * 8.0
-            ELSE COALESCE(n.horas_base, 0)
-        END AS horas_calculadas
+            WHEN COALESCE(n.horas_base, 0) > 0 THEN ROUND(COALESCE(n.horas_base, 0), 2)
+            ELSE COALESCE(dl.dias, 0) * 8.0
+        END AS horas
     FROM normalizados n
     LEFT JOIN dias_laborables dl ON dl.registro_id = n.registro_id
     WHERE n.event_type IS NOT NULL
 )
 SELECT
     fecha,
+    fecha_fin,
     person_id,
     persona,
     project_id,
@@ -120,12 +125,14 @@ SELECT
     event_type,
     CASE event_type
         WHEN 'day_off' THEN 'Day off'
-        WHEN 'holiday' THEN 'Vacaciones'
-        WHEN 'overtime' THEN 'Horas extras'
+        WHEN 'holiday' THEN 'Holiday'
+        WHEN 'sick_leave' THEN 'Sick leave'
+        WHEN 'vacation' THEN 'Vacation'
         ELSE event_type
     END AS event_label,
-    ROUND(SUM(COALESCE(horas_calculadas, 0)), 2) AS horas,
+    SUM(COALESCE(dias, 0)) AS dias,
+    ROUND(SUM(COALESCE(horas, 0)), 2) AS horas,
     COUNT(*) AS registros,
     GROUP_CONCAT(DISTINCT fuente) AS fuentes
 FROM calculados
-GROUP BY fecha, person_id, persona, project_id, equipo, event_type;
+GROUP BY fecha, fecha_fin, person_id, persona, project_id, equipo, event_type;
