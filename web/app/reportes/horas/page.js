@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Download, Filter, Plus } from 'lucide-react';
+import { Activity, CalendarDays, Clock, Database, Download, Filter, Gauge, Plus, Rows3, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageSection } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -281,7 +282,7 @@ export default function ReporteHorasPage() {
   function handleExport() { downloadExcel({ rows, mode: view, filters, expectedPerPerson, expectedTotal: estimatedTotal, businessDays, period: selectedPeriod, summary: data?.summary, filterLabels: { project: selectedProject?.proyecto || selectedProject?.project_key_rpt || '', person: selectedPerson?.persona || '', eventType: filters.eventType ? labelType(filters.eventType) : '', activityDetail: selectedActivityDetail?.activity_detail_at || filters.activityDetail || '' } }); }
 
   return (
-    <main className="shell reportShell hoursReportShell">
+    <main className="shell reportShell hoursReportShell modernReportPage">
       <nav className="topbar">
         <Link className="brand" href="/">
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
@@ -290,40 +291,43 @@ export default function ReporteHorasPage() {
         <Link className="navLink" href="/">Inicio</Link>
       </nav>
 
-      <section className="pageHeader">
-        <div>
-          <p className="eyebrow">ActivityTimeline + PGI</p>
-          <h1>Reporte de horas</h1>
-          <p>Horas por persona y por proyecto, agrupadas por tipo de actividad e incluyendo cargas PGI manuales.</p>
+      <PageSection className="modernReportHero">
+        <div className="modernReportHeroText">
+          <span className="modernHeroIcon"><Clock size={20} /></span>
+          <div>
+            <p className="eyebrow">ActivityTimeline + PGI</p>
+            <h1>Reporte de horas</h1>
+            <p>Horas por persona y por proyecto, agrupadas por tipo de actividad e incluyendo cargas PGI manuales.</p>
+          </div>
         </div>
         <span className={error || modelPending ? 'status error' : 'status'}>
           {loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}
         </span>
-      </section>
+      </PageSection>
 
-      <section className="filtersPanel hoursFiltersPanel">
+      <PageSection className="filtersPanel hoursFiltersPanel modernFilterPanel">
         <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
         <label>Proyecto<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label>
         <label>Persona<select value={filters.personId} onChange={(event) => setFilters({ ...filters, personId: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.people || []).map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label>
         <label>Actividad<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.eventTypes || []).map((item) => <option key={item.event_type} value={item.event_type}>{labelType(item.event_type)}</option>)}</select></label>
         <label>Detalle booking<select value={filters.activityDetail} onChange={(event) => setFilters({ ...filters, activityDetail: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.activityDetails || []).map((item) => <option key={item.activity_detail_at} value={item.activity_detail_at}>{item.activity_detail_at}</option>)}</select></label>
         <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
-      </section>
+      </PageSection>
 
       {error && <div className="errorBox">{error}</div>}
       {modelPending && <div className="errorBox">{data.setupMessage}</div>}
 
-      <section className="kpiGrid hoursKpiGrid">
-        <article className="estimatedHoursCard"><span>Total estimado horas del mes</span><strong>{formatHours(estimatedTotal)}</strong><small>{selectedPeriod} · {formatHours(data?.summary?.personas)} personas · {businessDays} dias habiles</small></article>
-        <article><span>Horas total</span><strong>{formatHours(data?.summary?.horas)}</strong><small>{formatPercent(coveragePercent)} del estimado</small></article>
-        <article><span>Horas AT</span><strong>{formatHours(data?.summary?.horas_at)}</strong></article>
-        <article><span>PGI</span><strong>{formatHours(data?.summary?.horas_pgi)}</strong></article>
-        <article><span>Registros</span><strong>{formatHours(data?.summary?.registros)}</strong></article>
-      </section>
+      <PageSection className="kpiGrid hoursKpiGrid modernKpiGrid">
+        <article className="estimatedHoursCard"><span><CalendarDays size={16} />Total estimado horas del mes</span><strong>{formatHours(estimatedTotal)}</strong><small>{selectedPeriod} · {formatHours(data?.summary?.personas)} personas · {businessDays} dias habiles</small></article>
+        <article><span><Gauge size={16} />Horas total</span><strong>{formatHours(data?.summary?.horas)}</strong><small>{formatPercent(coveragePercent)} del estimado</small></article>
+        <article><span><Activity size={16} />Horas AT</span><strong>{formatHours(data?.summary?.horas_at)}</strong></article>
+        <article><span><Database size={16} />PGI</span><strong>{formatHours(data?.summary?.horas_pgi)}</strong></article>
+        <article><span><Rows3 size={16} />Registros</span><strong>{formatHours(data?.summary?.registros)}</strong></article>
+      </PageSection>
 
-      <section className="reportPanel">
+      <PageSection className="reportPanel modernDataPanel">
         <div className="panelHeader">
-          <div><h2>Distribucion por tipo de actividad</h2><p>{selectedPeriod}</p></div>
+          <div><h2><Users size={18} />Distribucion por tipo de actividad</h2><p>{selectedPeriod}</p></div>
           <div className="panelActions">
             <div className="segmented">
               <button className={view === 'persona' ? 'active' : ''} onClick={() => setView('persona')}>Personas</button>
@@ -334,7 +338,7 @@ export default function ReporteHorasPage() {
           </div>
         </div>
         {loading ? <div className="emptyState">Cargando datos...</div> : <MatrixTable rows={rows} mode={view} expectedPerPerson={expectedPerPerson} />}
-      </section>
+      </PageSection>
 
       {pgiOpen && (
         <div className="modalBackdrop">
@@ -358,7 +362,7 @@ export default function ReporteHorasPage() {
         .hoursReportShell .pageHeader{padding:30px 0 18px!important}
         .hoursReportShell .pageHeader h1{font-size:clamp(32px,3.2vw,46px)!important}
         .hoursReportShell .pageHeader p{max-width:980px}
-        .hoursReportShell .hoursFiltersPanel{display:grid!important;grid-template-columns:minmax(145px,.55fr) minmax(180px,1fr) minmax(180px,1fr) minmax(150px,.8fr) minmax(190px,1.05fr) auto!important;gap:12px!important;align-items:end!important;padding:16px!important}
+        .hoursReportShell .hoursFiltersPanel{display:grid!important;grid-template-columns:minmax(170px,.6fr) minmax(180px,1fr) minmax(180px,1fr) minmax(150px,.8fr) minmax(190px,1.05fr) auto!important;gap:12px!important;align-items:end!important;padding:16px!important}
         .hoursReportShell .hoursFiltersPanel label{min-width:0}
         .hoursReportShell .hoursFiltersPanel select,.hoursReportShell .hoursFiltersPanel input{min-width:0}
         .hoursReportShell .hoursKpiGrid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:16px auto!important}
@@ -375,7 +379,7 @@ export default function ReporteHorasPage() {
         .hoursReportShell .personCol{width:170px}.hoursReportShell .projectCol{width:125px}.hoursReportShell .activityCol{width:70px}.hoursReportShell .totalCol{width:70px}.hoursReportShell .controlCol{width:139px}
         .hoursReportShell .hoursMatrixTable th,.hoursReportShell .hoursMatrixTable td{padding:10px 8px!important;font-size:11.5px!important;line-height:1.25!important;border-right:1px solid #eef2f7!important}
         .hoursReportShell .hoursMatrixTable th:last-child,.hoursReportShell .hoursMatrixTable td:last-child{border-right:0!important}
-        .hoursReportShell .hoursMatrixTable th{position:sticky;top:0;z-index:2;background:#f8fafc!important;color:#5d6b82;letter-spacing:0!important;white-space:normal!important;overflow-wrap:anywhere!important;font-size:10.5px!important;border-bottom:1px solid #d8e0ec!important}
+        .hoursReportShell .hoursMatrixTable th{position:sticky;top:0;z-index:2;background:#f8fafc!important;color:#5d6b82;letter-spacing:0!important;white-space:normal!important;overflow-wrap:normal!important;font-size:9.8px!important;border-bottom:1px solid #d8e0ec!important}
         .hoursReportShell .hoursMatrixTable tbody tr:nth-child(even) td{background:#fbfcfe}
         .hoursReportShell .hoursMatrixTable tbody tr:hover td{background:#fff8f1}
         .hoursReportShell .hoursMatrixTable .activityColumn{width:70px!important}
