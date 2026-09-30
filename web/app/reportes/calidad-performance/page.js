@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Filter, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { PageSection } from '@/components/ui';
+import { PageSection, ModernMonthPicker } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -122,7 +122,7 @@ export default function CalidadPerformancePage() {
       </PageSection>
 
       <PageSection className="qualityFilters qaFilters modernFilterPanel">
-        <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
+        <label>Mes<ModernMonthPicker value={filters.month} onChange={handleMonthChange} /></label>
         <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
       </PageSection>
 

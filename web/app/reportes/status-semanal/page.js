@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { CalendarCheck, Filter } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { PageSection } from '@/components/ui';
+import { PageSection, ModernDatePicker, ModernSelect } from '@/components/ui';
 import './status.module.css';
 
 function defaultWeek() {
@@ -95,16 +95,11 @@ export default function StatusSemanalPage() {
       <PageSection className="qualityFilters weeklyFilters modernFilterPanel">
         <label>
           Semana
-          <input type="date" value={filters.week} onChange={(event) => setFilters({ ...filters, week: event.target.value })} />
+          <ModernDatePicker value={filters.week} onChange={(value) => setFilters({ ...filters, week: value })} />
         </label>
         <label>
           Equipo
-          <select value={filters.equipo} onChange={(event) => setFilters({ ...filters, equipo: event.target.value })}>
-            <option value="">Todos</option>
-            {(data?.filtersData?.equipos || []).map((equipo) => (
-              <option key={equipo} value={equipo}>{equipo}</option>
-            ))}
-          </select>
+          <ModernSelect value={filters.equipo} onChange={(value) => setFilters({ ...filters, equipo: value })} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...(data?.filtersData?.equipos || []).map((equipo) => ({ value: equipo, label: equipo }))]} />
         </label>
         <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
       </PageSection>

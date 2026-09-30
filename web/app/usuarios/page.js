@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Eye, EyeOff, RefreshCw, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { PageSection } from '@/components/ui';
+import { PageSection, ModernSelect } from '@/components/ui';
 
 const EMPTY_FORM = { username: '', password: '', role: 'viewer', projectId: '', enabled: true };
 
@@ -132,8 +132,8 @@ export default function UsuariosPage() {
           <div className="formTitleBlock"><span className="modernHeroIcon compactIcon"><UserPlus size={18} /></span><div><h2>{editingUser ? 'Editar usuario' : 'Nuevo usuario'}</h2><p>{editingUser ? 'Actualiza rol, equipo o estado del usuario.' : 'Crea un acceso y asignalo a un rol y equipo.'}</p></div></div>
           <label className="userNameField">Usuario<input value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} disabled={Boolean(editingUser)} required /></label>
           <label className="passwordLabel">Contraseña<span className="passwordField"><input type={showPassword ? 'text' : 'password'} placeholder={editingUser ? 'Dejar vacio para mantener la actual' : 'Contraseña temporal'} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /><button className="iconButton" type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span></label>
-          <label className="roleField">Rol<select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value, projectId: event.target.value === 'admin' ? '' : form.projectId })}>{data.roles.map((role) => <option key={role.role_key} value={role.role_key}>{role.label}</option>)}</select></label>
-          <label className="teamField">Equipo<select value={form.projectId} onChange={(event) => setForm({ ...form, projectId: event.target.value })} disabled={isAdminForm}><option value="">{isAdminForm ? 'Todos los equipos' : 'Seleccionar equipo'}</option>{data.projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto}</option>)}</select></label>
+          <label className="roleField">Rol<ModernSelect value={form.role} onChange={(value) => setForm({ ...form, role: value, projectId: value === 'admin' ? '' : form.projectId })} options={data.roles.map((role) => ({ value: role.role_key, label: role.label }))} /></label>
+          <label className="teamField">Equipo<ModernSelect value={form.projectId} disabled={isAdminForm} onChange={(value) => setForm({ ...form, projectId: value })} placeholder={isAdminForm ? 'Todos los equipos' : 'Seleccionar equipo'} options={[{ value: '', label: isAdminForm ? 'Todos los equipos' : 'Seleccionar equipo' }, ...data.projects.map((project) => ({ value: String(project.project_id), label: project.proyecto }))]} /></label>
           <label className="checkRow userActiveToggle"><input type="checkbox" checked={form.enabled} onChange={(event) => setForm({ ...form, enabled: event.target.checked })} />Activo</label>
           <div className="formActions">{editingUser && <button className="secondaryButton" type="button" onClick={cancelEdit}>Cancelar</button>}<button className="primaryButton" disabled={saving}>{saving ? 'Guardando...' : 'Guardar usuario'}</button></div>
         </form>

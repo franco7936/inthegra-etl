@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Activity, CalendarDays, Clock, Database, Download, Filter, Gauge, Plus, Rows3, Save, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { PageSection } from '@/components/ui';
+import { PageSection, ModernDatePicker, ModernMonthPicker, ModernSelect } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -312,10 +312,10 @@ export default function ReporteHorasPage() {
       </PageSection>
 
       <PageSection className="filtersPanel hoursFiltersPanel modernFilterPanel">
-        <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
-        <label>Proyecto<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label>
-        <label>Persona<select value={filters.personId} onChange={(event) => setFilters({ ...filters, personId: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.people || []).map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label>
-        <label>Actividad<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todas</option>{(data?.filtersData?.eventTypes || []).map((item) => <option key={item.event_type} value={item.event_type}>{labelType(item.event_type)}</option>)}</select></label>
+        <label>Mes<ModernMonthPicker value={filters.month} onChange={handleMonthChange} /></label>
+        <label>Proyecto<ModernSelect value={filters.projectId} onChange={(value) => setFilters({ ...filters, projectId: value })} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...(data?.filtersData?.projects || []).map((project) => ({ value: String(project.project_id), label: project.proyecto || project.project_key_rpt }))]} /></label>
+        <label>Persona<ModernSelect value={filters.personId} onChange={(value) => setFilters({ ...filters, personId: value })} placeholder="Todas" options={[{ value: '', label: 'Todas' }, ...(data?.filtersData?.people || []).map((person) => ({ value: String(person.person_id), label: person.persona }))]} /></label>
+        <label>Actividad<ModernSelect value={filters.eventType} onChange={(value) => setFilters({ ...filters, eventType: value })} placeholder="Todas" options={[{ value: '', label: 'Todas' }, ...(data?.filtersData?.eventTypes || []).map((item) => ({ value: item.event_type, label: labelType(item.event_type) }))]} /></label>
         <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
       </PageSection>
 
@@ -355,10 +355,10 @@ export default function ReporteHorasPage() {
             </header>
             {pgiError && <div className="errorBox compactError">{pgiError}</div>}
             <div className="pgiModalGrid">
-              <label>Proyecto<select value={pgiForm.projectId} disabled={pgiRefs.projects.length === 1} onChange={(event) => setPgiForm({ ...pgiForm, projectId: event.target.value })} required><option value="">Seleccionar proyecto</option>{pgiRefs.projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>)}</select></label>
-              <label>Persona<select value={pgiForm.personId} onChange={(event) => setPgiForm({ ...pgiForm, personId: event.target.value })} required><option value="">Seleccionar persona</option>{pgiRefs.people.map((person) => <option key={person.person_id} value={person.person_id}>{person.persona}</option>)}</select></label>
-              <label>Tipo de incidencia<select value={pgiForm.incidenceType} onChange={(event) => setPgiForm({ ...pgiForm, incidenceType: event.target.value })} required>{(pgiRefs.incidenceTypes.length ? pgiRefs.incidenceTypes : [{ key: 'pgi', label: 'PGI general' }, { key: 'day_off', label: 'Day off' }, { key: 'holiday', label: 'Vacaciones' }, { key: 'overtime', label: 'Horas extras' }]).map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}</select></label>
-              <label>Fecha<input type="date" value={pgiForm.fecha} onChange={(event) => setPgiForm({ ...pgiForm, fecha: event.target.value })} required /></label>
+              <label>Proyecto<ModernSelect value={pgiForm.projectId} disabled={pgiRefs.projects.length === 1} onChange={(value) => setPgiForm({ ...pgiForm, projectId: value })} placeholder="Seleccionar proyecto" options={[{ value: '', label: 'Seleccionar proyecto' }, ...pgiRefs.projects.map((project) => ({ value: String(project.project_id), label: project.proyecto || project.project_key_rpt }))]} /></label>
+              <label>Persona<ModernSelect value={pgiForm.personId} onChange={(value) => setPgiForm({ ...pgiForm, personId: value })} placeholder="Seleccionar persona" options={[{ value: '', label: 'Seleccionar persona' }, ...pgiRefs.people.map((person) => ({ value: String(person.person_id), label: person.persona }))]} /></label>
+              <label>Tipo de incidencia<ModernSelect value={pgiForm.incidenceType} onChange={(value) => setPgiForm({ ...pgiForm, incidenceType: value })} options={(pgiRefs.incidenceTypes.length ? pgiRefs.incidenceTypes : [{ key: 'pgi', label: 'PGI general' }, { key: 'day_off', label: 'Day off' }, { key: 'holiday', label: 'Vacaciones' }, { key: 'overtime', label: 'Horas extras' }]).map((type) => ({ value: type.key, label: type.label }))} /></label>
+              <label>Fecha<ModernDatePicker value={pgiForm.fecha} onChange={(value) => setPgiForm({ ...pgiForm, fecha: value })} /></label>
               <label>Horas<input type="number" min="0.25" max="24" step="0.25" value={pgiForm.horas} onChange={(event) => setPgiForm({ ...pgiForm, horas: event.target.value })} required /></label>
               <label className="pgiCommentField">Comentario<input type="text" placeholder="Opcional" value={pgiForm.comentario} onChange={(event) => setPgiForm({ ...pgiForm, comentario: event.target.value })} /></label>
             </div>

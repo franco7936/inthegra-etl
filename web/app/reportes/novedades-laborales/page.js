@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { CalendarDays, Download, Filter, HeartPulse, Plane, Rows3, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { PageSection } from '@/components/ui';
+import { PageSection, ModernMonthPicker, ModernSelect } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -157,9 +157,9 @@ export default function NovedadesLaboralesPage() {
         <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
       </PageSection>
       <PageSection className="filtersPanel modernFilterPanel laborFilterPanel">
-        <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
-        <label>Equipo<select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}><option value="">Todos los equipos</option>{(data?.filtersData?.projects || []).map((project) => <option key={project.project_id} value={project.project_id}>{project.equipo}</option>)}</select></label>
-        <label>Tipo<select value={filters.eventType} onChange={(event) => setFilters({ ...filters, eventType: event.target.value })}><option value="">Todos los tipos</option>{(data?.filtersData?.eventTypes || []).map((type) => <option key={type.event_type} value={type.event_type}>{type.label}</option>)}</select></label>
+        <label>Mes<ModernMonthPicker value={filters.month} onChange={handleMonthChange} /></label>
+        <label>Equipo<ModernSelect value={filters.projectId} onChange={(value) => setFilters({ ...filters, projectId: value })} placeholder="Todos los equipos" options={[{ value: '', label: 'Todos los equipos' }, ...(data?.filtersData?.projects || []).map((project) => ({ value: String(project.project_id), label: project.equipo }))]} /></label>
+        <label>Tipo<ModernSelect value={filters.eventType} onChange={(value) => setFilters({ ...filters, eventType: value })} placeholder="Todos los tipos" options={[{ value: '', label: 'Todos los tipos' }, ...(data?.filtersData?.eventTypes || []).map((type) => ({ value: type.event_type, label: type.label }))]} /></label>
         <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
         <button className="secondaryButton reportIconButton" disabled={!canExport} onClick={handleExport}><Download size={16} />Exportar Excel</button>
       </PageSection>

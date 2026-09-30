@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { BriefcaseBusiness, CalendarDays, Filter, FolderKanban } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { PageSection } from '@/components/ui';
+import { PageSection, ModernMonthPicker, ModernSelect } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -126,16 +126,11 @@ export default function InversionEstrategicaPage() {
       <PageSection className="investmentFilters modernFilterPanel">
         <label>
           Mes
-          <input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} />
+          <ModernMonthPicker value={filters.month} onChange={handleMonthChange} />
         </label>
         <label>
           Proyecto
-          <select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}>
-            <option value="">Todos</option>
-            {(data?.filtersData?.projects || []).map((project) => (
-              <option key={project.project_id} value={project.project_id}>{project.proyecto || project.project_key_rpt}</option>
-            ))}
-          </select>
+          <ModernSelect value={filters.projectId} onChange={(value) => setFilters({ ...filters, projectId: value })} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...(data?.filtersData?.projects || []).map((project) => ({ value: String(project.project_id), label: project.proyecto || project.project_key_rpt }))]} />
         </label>
         <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
       </PageSection>

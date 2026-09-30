@@ -552,3 +552,39 @@ td { color: #263247; }
   .modernReportCard { grid-template-columns: 38px minmax(0, 1fr); }
   .modernReportArrow { display: none; }
 }
+
+
+/* Custom report controls: replaces native select/date popovers. */
+.modernControl { position: relative; display: block; width: 100%; min-width: 0; }
+.modernControlButton { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #dce4ef; border-radius: 12px; background: #fff; color: var(--ink); padding: 0 12px; font-weight: 800; text-align: left; cursor: pointer; outline: none; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease, transform .15s ease; }
+.modernControlButton:hover { border-color: #ffc399; background: #fffaf7; }
+.modernControlButton:focus-visible, .modernControl.isOpen .modernControlButton { border-color: #ffb074; box-shadow: 0 0 0 4px rgba(255,106,0,.1); }
+.modernControlButton span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modernControlButton svg { flex: 0 0 auto; color: var(--orange); }
+.modernControl.isDisabled { opacity: .68; }
+.modernControl.isDisabled .modernControlButton { cursor: not-allowed; background: #f8fafc; }
+.modernDropdown { position: absolute; left: 0; top: calc(100% + 10px); z-index: 80; width: min(360px, max(100%, 280px)); border: 1px solid rgba(226,231,239,.96); border-radius: 18px; background: rgba(255,255,255,.98); box-shadow: 0 24px 70px rgba(15,32,67,.18); backdrop-filter: blur(14px); overflow: hidden; }
+.modernSelectMenu { max-height: 320px; overflow: auto; padding: 8px; }
+.modernSelectMenu button { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-radius: 12px; background: transparent; color: var(--navy); padding: 0 12px; font-weight: 800; text-align: left; cursor: pointer; }
+.modernSelectMenu button:hover { background: #fff1e8; color: var(--orange-dark); }
+.modernSelectMenu button.active { background: #fff4ec; color: var(--orange-dark); }
+.modernSelectMenu button svg { color: var(--orange); }
+.modernCalendarPanel { padding: 14px; }
+.modernCalendarHeader { display: grid; grid-template-columns: 36px minmax(0,1fr) 36px; align-items: center; gap: 8px; margin-bottom: 12px; }
+.modernCalendarHeader strong { color: var(--navy); font-size: 15px; font-weight: 900; text-align: center; }
+.modernCalendarHeader button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--navy); cursor: pointer; }
+.modernCalendarHeader button:hover { border-color: #ffd1ad; background: #fff1e8; color: var(--orange-dark); }
+.modernMonthGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.modernMonthGrid button, .modernDayGrid button { border: 0; border-radius: 12px; background: #f8fafc; color: var(--navy); font-weight: 850; cursor: pointer; }
+.modernMonthGrid button { min-height: 44px; }
+.modernMonthGrid button:hover, .modernDayGrid button:hover { background: #fff1e8; color: var(--orange-dark); }
+.modernMonthGrid button.active, .modernDayGrid button.active { background: var(--orange); color: #fff; box-shadow: 0 10px 22px rgba(255,106,0,.24); }
+.modernWeekGrid, .modernDayGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.modernWeekGrid { margin-bottom: 7px; }
+.modernWeekGrid small { color: #77839a; font-size: 11px; font-weight: 900; text-align: center; }
+.modernDayGrid button, .modernDayGrid i { min-height: 34px; display: grid; place-items: center; font-style: normal; }
+.modernDayGrid i { opacity: 0; }
+.datePanel { width: min(336px, max(100%, 300px)); }
+.pgiModal .modernControlButton { min-height: 44px; border-radius: 12px; }
+.pgiModal .modernDropdown { z-index: 95; }
+@media (max-width: 560px) { .modernDropdown, .datePanel { width: min(320px, calc(100vw - 48px)); } }
