@@ -16,7 +16,7 @@ Stack base:
 - TanStack Table para evolucionar las grillas de datos.
 - Componentes propios reutilizables sobre la identidad visual de Inthegra, con una base tipo `shadcn/ui` adaptada al proyecto.
 
-La home ya usa la nueva base de componentes (`PageSection`, `Surface`, `ReportCard`) para organizar reportes por categoria. `Reporte de horas` y `Novedades laborales` usan la misma linea visual: hero moderno, filtros en panel, KPIs con iconos, paneles de datos consistentes y tablas compactas. El login tambien fue migrado a una pantalla dividida moderna con identidad Inthegra. En pantallas chicas mantienen scroll horizontal controlado cuando corresponde.
+La home ya usa la nueva base de componentes (`PageSection`, `Surface`, `ReportCard`) para organizar reportes por categoria. `Reporte de horas`, `Novedades laborales`, `Usuarios` y `Roles` usan la misma linea visual: hero moderno, filtros/formularios en panel, KPIs con iconos, paneles de datos consistentes y tablas compactas. El login tambien fue migrado a una pantalla dividida moderna con identidad Inthegra. En pantallas chicas mantienen scroll horizontal controlado cuando corresponde.
 
 ## Deploy gratis en Vercel
 
