@@ -5,10 +5,14 @@ import { parseSession } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 const INCIDENCE_TYPES = [
-  { key: 'pgi', label: 'PGI general' },
+  { key: 'booking', label: 'Booking' },
   { key: 'day_off', label: 'Day off' },
-  { key: 'holiday', label: 'Vacaciones' },
-  { key: 'overtime', label: 'Horas extras' },
+  { key: 'holiday', label: 'Holiday' },
+  { key: 'jira_issue', label: 'Jira issue' },
+  { key: 'placeholder', label: 'Placeholder' },
+  { key: 'sick_leave', label: 'Sick leave' },
+  { key: 'vacation', label: 'Vacation' },
+  { key: 'worklog', label: 'Worklog' },
 ];
 const VALID_INCIDENCE_TYPES = new Set(INCIDENCE_TYPES.map((item) => item.key));
 
@@ -30,7 +34,7 @@ async function ensurePgiTable(db) {
       project_id INTEGER NOT NULL,
       fecha TEXT NOT NULL,
       horas REAL NOT NULL,
-      incidence_type TEXT DEFAULT 'pgi',
+      incidence_type TEXT DEFAULT 'worklog',
       comentario TEXT,
       creado_por TEXT,
       activo INTEGER DEFAULT 1,
@@ -38,13 +42,13 @@ async function ensurePgiTable(db) {
     )
   `);
   if (!(await columnExists(db, 'pgi_workload', 'incidence_type'))) {
-    await db.execute(`ALTER TABLE pgi_workload ADD COLUMN incidence_type TEXT DEFAULT 'pgi'`);
+    await db.execute(`ALTER TABLE pgi_workload ADD COLUMN incidence_type TEXT DEFAULT 'worklog'`);
   }
 }
 
 function normalizeIncidenceType(value) {
-  const normalized = String(value || 'pgi').trim().toLowerCase();
-  return VALID_INCIDENCE_TYPES.has(normalized) ? normalized : 'pgi';
+  const normalized = String(value || 'worklog').trim().toLowerCase();
+  return VALID_INCIDENCE_TYPES.has(normalized) ? normalized : 'worklog';
 }
 
 function validatePayload(payload) {
@@ -125,3 +129,4 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
+

@@ -111,8 +111,18 @@ SELECT
     me.project_key_rpt,
     me.team_id_at,
     NULL AS issue_key,
-    'PGI' AS event_type,
-    p.incidence_type AS activity_detail_at,
+    CASE LOWER(REPLACE(TRIM(COALESCE(p.incidence_type, 'worklog')), ' ', '_'))
+        WHEN 'booking' THEN 'booking'
+        WHEN 'day_off' THEN 'day_off'
+        WHEN 'holiday' THEN 'holiday'
+        WHEN 'jira_issue' THEN 'jira_issue'
+        WHEN 'placeholder' THEN 'placeholder'
+        WHEN 'sick_leave' THEN 'sick_leave'
+        WHEN 'vacation' THEN 'vacation'
+        WHEN 'worklog' THEN 'worklog'
+        ELSE 'worklog'
+    END AS event_type,
+    'PGI log' AS activity_detail_at,
     COALESCE(p.comentario, 'PGI log') AS summary,
     date(p.fecha) AS fecha,
     p.fecha AS planned_start,
@@ -160,3 +170,4 @@ SELECT
     COUNT(*) AS registros
 FROM VW_REPORTE_HORAS_DETALLE
 GROUP BY fecha, project_id, proyecto, project_key_rpt, event_type, activity_detail_at;
+

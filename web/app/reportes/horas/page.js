@@ -234,7 +234,7 @@ export default function ReporteHorasPage() {
   const [error, setError] = useState('');
   const [pgiOpen, setPgiOpen] = useState(false);
   const [pgiRefs, setPgiRefs] = useState({ projects: [], people: [], incidenceTypes: [] });
-  const [pgiForm, setPgiForm] = useState({ projectId: '', personId: '', incidenceType: 'pgi', fecha: initial.from, horas: '', comentario: '' });
+  const [pgiForm, setPgiForm] = useState({ projectId: '', personId: '', incidenceType: 'worklog', fecha: initial.from, horas: '', comentario: '' });
   const [pgiSaving, setPgiSaving] = useState(false);
   const [pgiError, setPgiError] = useState('');
 
@@ -265,7 +265,7 @@ export default function ReporteHorasPage() {
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.error || 'No se pudo guardar PGI');
       setPgiOpen(false);
-      setPgiForm({ projectId: '', personId: '', incidenceType: 'pgi', fecha: filters.from, horas: '', comentario: '' });
+      setPgiForm({ projectId: '', personId: '', incidenceType: 'worklog', fecha: filters.from, horas: '', comentario: '' });
       loadData(filters);
     } catch (err) { setPgiError(err.message); }
     finally { setPgiSaving(false); }
@@ -358,7 +358,7 @@ export default function ReporteHorasPage() {
             <div className="pgiModalGrid">
               <label>Proyecto<ModernSelect value={pgiForm.projectId} disabled={pgiRefs.projects.length === 1} onChange={(value) => setPgiForm({ ...pgiForm, projectId: value })} placeholder="Seleccionar proyecto" options={[{ value: '', label: 'Seleccionar proyecto' }, ...pgiRefs.projects.map((project) => ({ value: String(project.project_id), label: project.proyecto || project.project_key_rpt }))]} /></label>
               <label>Persona<ModernSelect value={pgiForm.personId} onChange={(value) => setPgiForm({ ...pgiForm, personId: value })} placeholder="Seleccionar persona" options={[{ value: '', label: 'Seleccionar persona' }, ...pgiRefs.people.map((person) => ({ value: String(person.person_id), label: person.persona }))]} /></label>
-              <label>Tipo de incidencia<ModernSelect value={pgiForm.incidenceType} onChange={(value) => setPgiForm({ ...pgiForm, incidenceType: value })} options={(pgiRefs.incidenceTypes.length ? pgiRefs.incidenceTypes : [{ key: 'pgi', label: 'PGI general' }, { key: 'day_off', label: 'Day off' }, { key: 'holiday', label: 'Vacaciones' }, { key: 'overtime', label: 'Horas extras' }]).map((type) => ({ value: type.key, label: type.label }))} /></label>
+              <label>Tipo de incidencia<ModernSelect value={pgiForm.incidenceType} onChange={(value) => setPgiForm({ ...pgiForm, incidenceType: value })} options={(pgiRefs.incidenceTypes.length ? pgiRefs.incidenceTypes : FIXED_EVENT_TYPES.map((key) => ({ key, label: labelType(key) }))).map((type) => ({ value: type.key, label: type.label }))} /></label>
               <label>Fecha<ModernDatePicker value={pgiForm.fecha} onChange={(value) => setPgiForm({ ...pgiForm, fecha: value })} /></label>
               <label>Horas<input type="number" min="0.25" max="24" step="0.25" value={pgiForm.horas} onChange={(event) => setPgiForm({ ...pgiForm, horas: event.target.value })} required /></label>
               <label className="pgiCommentField">Comentario<input type="text" placeholder="Opcional" value={pgiForm.comentario} onChange={(event) => setPgiForm({ ...pgiForm, comentario: event.target.value })} /></label>
@@ -439,3 +439,4 @@ export default function ReporteHorasPage() {
     </main>
   );
 }
+
