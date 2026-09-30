@@ -224,8 +224,10 @@ function monthLabel(value) {
 
 export function ModernSelect({ value, onChange, options = [], placeholder = 'Seleccionar', disabled = false }) {
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState({});
   const wrapperRef = useRef(null);
-  useOutsideClose(wrapperRef, () => setOpen(false));
+  const panelRef = useRef(null);
+  useOutsideClose(wrapperRef, () => setOpen(false), [panelRef]);
   const selected = options.find((option) => String(option.value) === String(value));
   const label = selected?.label || placeholder;
 
@@ -234,25 +236,50 @@ export function ModernSelect({ value, onChange, options = [], placeholder = 'Sel
     setOpen(false);
   }
 
+  useEffect(() => {
+    if (!open) return undefined;
+    function updatePanelPosition() {
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const margin = 16;
+      const width = Math.min(360, Math.max(rect.width, 280));
+      const optionCount = Math.max(options.length, 1);
+      const estimatedHeight = Math.min(336, optionCount * 46 + 16);
+      const left = Math.min(Math.max(rect.left, margin), window.innerWidth - width - margin);
+      const below = rect.bottom + 10;
+      const top = below + estimatedHeight > window.innerHeight - margin ? Math.max(margin, rect.top - estimatedHeight - 10) : below;
+      setPanelStyle({ position: 'fixed', left, top, width, zIndex: 140 });
+    }
+    updatePanelPosition();
+    window.addEventListener('resize', updatePanelPosition);
+    window.addEventListener('scroll', updatePanelPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition);
+      window.removeEventListener('scroll', updatePanelPosition, true);
+    };
+  }, [open, options.length]);
+
+  const selectPanel = (
+    <span ref={panelRef} className="modernDropdown modernSelectMenu modernSelectPortal" style={panelStyle}>
+      {options.map((option) => {
+        const active = String(option.value) === String(value);
+        return (
+          <button type="button" className={active ? 'active' : ''} key={String(option.value)} onClick={() => selectOption(option.value)}>
+            <span>{option.label}</span>
+            {active && <Check size={16} />}
+          </button>
+        );
+      })}
+    </span>
+  );
+
   return (
     <span className={'modernControl modernSelect ' + (open ? 'isOpen ' : '') + (disabled ? 'isDisabled' : '')} ref={wrapperRef}>
       <button type="button" className="modernControlButton" disabled={disabled} onClick={() => setOpen(!open)}>
         <span>{label}</span>
         <ChevronDown size={17} />
       </button>
-      {open && (
-        <span className="modernDropdown modernSelectMenu">
-          {options.map((option) => {
-            const active = String(option.value) === String(value);
-            return (
-              <button type="button" className={active ? 'active' : ''} key={String(option.value)} onClick={() => selectOption(option.value)}>
-                <span>{option.label}</span>
-                {active && <Check size={16} />}
-              </button>
-            );
-          })}
-        </span>
-      )}
+      {open && createPortal(selectPanel, document.body)}
     </span>
   );
 }
