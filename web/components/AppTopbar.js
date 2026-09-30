@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Home, LogOut, Menu, Settings, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const GROUPS = [
   {
@@ -181,9 +182,13 @@ const SHORT_DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
 function pad(value) { return String(value).padStart(2, '0'); }
 
-function useOutsideClose(ref, onClose) {
+function useOutsideClose(ref, onClose, extraRefs = []) {
   useEffect(() => {
-    function handleClick(event) { if (ref.current && !ref.current.contains(event.target)) onClose(); }
+    function containsTarget(itemRef, target) { return itemRef.current && itemRef.current.contains(target); }
+    function handleClick(event) {
+      if (containsTarget(ref, event.target) || extraRefs.some((itemRef) => containsTarget(itemRef, event.target))) return;
+      onClose();
+    }
     function handleEscape(event) { if (event.key === 'Escape') onClose(); }
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleEscape);
@@ -191,7 +196,7 @@ function useOutsideClose(ref, onClose) {
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [ref, onClose]);
+  }, [ref, onClose, extraRefs]);
 }
 
 function parseMonth(value) {
@@ -296,8 +301,10 @@ export function ModernDatePicker({ value, onChange }) {
   const initialDate = parseDateValue(value) || new Date();
   const [cursor, setCursor] = useState({ year: initialDate.getUTCFullYear(), month: initialDate.getUTCMonth() + 1 });
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState({});
   const wrapperRef = useRef(null);
-  useOutsideClose(wrapperRef, () => setOpen(false));
+  const panelRef = useRef(null);
+  useOutsideClose(wrapperRef, () => setOpen(false), [panelRef]);
   const selected = parseDateValue(value);
 
   useEffect(() => {
@@ -322,29 +329,53 @@ export function ModernDatePicker({ value, onChange }) {
     setOpen(false);
   }
 
+  useEffect(() => {
+    if (!open) return undefined;
+    function updatePanelPosition() {
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const margin = 16;
+      const width = Math.min(336, Math.max(rect.width, 300));
+      const estimatedHeight = 324;
+      const left = Math.min(Math.max(rect.left, margin), window.innerWidth - width - margin);
+      const below = rect.bottom + 10;
+      const top = below + estimatedHeight > window.innerHeight - margin ? Math.max(margin, rect.top - estimatedHeight - 10) : below;
+      setPanelStyle({ position: 'fixed', left, top, width, zIndex: 140 });
+    }
+    updatePanelPosition();
+    window.addEventListener('resize', updatePanelPosition);
+    window.addEventListener('scroll', updatePanelPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition);
+      window.removeEventListener('scroll', updatePanelPosition, true);
+    };
+  }, [open, cursor.year, cursor.month]);
+
+  const calendarPanel = (
+    <span ref={panelRef} className="modernDropdown modernCalendarPanel datePanel modernDatePortal" style={panelStyle}>
+      <span className="modernCalendarHeader">
+        <button type="button" onClick={() => moveMonth(-1)}><ChevronLeft size={17} /></button>
+        <strong>{MONTHS[cursor.month - 1]} {cursor.year}</strong>
+        <button type="button" onClick={() => moveMonth(1)}><ChevronRight size={17} /></button>
+      </span>
+      <span className="modernWeekGrid">{SHORT_DAYS.map((day) => <small key={day}>{day}</small>)}</span>
+      <span className="modernDayGrid">
+        {days.map((day, index) => {
+          if (!day) return <i key={'empty-' + index} />;
+          const active = selected && selected.getUTCFullYear() === cursor.year && selected.getUTCMonth() + 1 === cursor.month && selected.getUTCDate() === day;
+          return <button type="button" className={active ? 'active' : ''} key={day} onClick={() => selectDay(day)}>{day}</button>;
+        })}
+      </span>
+    </span>
+  );
+
   return (
     <span className={'modernControl modernDatePicker ' + (open ? 'isOpen' : '')} ref={wrapperRef}>
       <button type="button" className="modernControlButton" onClick={() => setOpen(!open)}>
         <span>{formatDateLabel(value)}</span>
         <CalendarDays size={17} />
       </button>
-      {open && (
-        <span className="modernDropdown modernCalendarPanel datePanel">
-          <span className="modernCalendarHeader">
-            <button type="button" onClick={() => moveMonth(-1)}><ChevronLeft size={17} /></button>
-            <strong>{MONTHS[cursor.month - 1]} {cursor.year}</strong>
-            <button type="button" onClick={() => moveMonth(1)}><ChevronRight size={17} /></button>
-          </span>
-          <span className="modernWeekGrid">{SHORT_DAYS.map((day) => <small key={day}>{day}</small>)}</span>
-          <span className="modernDayGrid">
-            {days.map((day, index) => {
-              if (!day) return <i key={'empty-' + index} />;
-              const active = selected && selected.getUTCFullYear() === cursor.year && selected.getUTCMonth() + 1 === cursor.month && selected.getUTCDate() === day;
-              return <button type="button" className={active ? 'active' : ''} key={day} onClick={() => selectDay(day)}>{day}</button>;
-            })}
-          </span>
-        </span>
-      )}
+      {open && createPortal(calendarPanel, document.body)}
     </span>
   );
 }
