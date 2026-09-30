@@ -300,6 +300,183 @@ td { color: #263247; }
 .adminOverviewGrid strong { display: block; margin-top: 8px; color: var(--navy); font-size: 30px; }
 .adminOverviewGrid small { color: var(--muted); }
 
+.modernDeliveryPage,
+.modernInvestmentPage,
+.modernQualityPage,
+.modernWeeklyPage {
+  background: #f6f8fb !important;
+  padding-bottom: 48px;
+}
+
+.modernDeliveryPage .deliveryHeader,
+.modernInvestmentPage .investmentHero,
+.modernQualityPage .qualityHeader,
+.modernWeeklyPage .weeklyHeader {
+  width: min(1240px, calc(100% - 48px)) !important;
+  max-width: none !important;
+  margin: 0 auto !important;
+  padding: 34px 0 18px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+
+.modernDeliveryPage .deliveryHeader h1,
+.modernInvestmentPage .investmentHero h1,
+.modernQualityPage .qualityHeader h1,
+.modernWeeklyPage .weeklyHeader h1 {
+  color: var(--ink) !important;
+  font-size: clamp(34px, 4vw, 54px) !important;
+  line-height: 1.02 !important;
+  letter-spacing: 0 !important;
+}
+
+.modernDeliveryPage .deliveryHeader p,
+.modernInvestmentPage .investmentHero p,
+.modernQualityPage .qualityHeader p,
+.modernWeeklyPage .weeklyHeader p {
+  color: var(--muted) !important;
+}
+
+.modernDeliveryPage .deliveryMeta {
+  align-self: flex-start;
+  justify-items: end;
+  gap: 8px;
+}
+
+.modernDeliveryPage .deliveryFilters,
+.modernInvestmentPage .investmentFilters,
+.modernQualityPage .qualityFilters,
+.modernWeeklyPage .weeklyFilters {
+  width: min(1240px, calc(100% - 48px)) !important;
+  margin: 0 auto !important;
+  padding: 16px !important;
+}
+
+.modernDeliveryPage .deliveryFilters { grid-template-columns: minmax(170px, .6fr) auto minmax(0, 1fr); }
+.modernInvestmentPage .investmentFilters { grid-template-columns: minmax(170px, .6fr) minmax(230px, 1fr) auto minmax(0, 1fr); }
+.modernQualityPage .qualityFilters,
+.modernWeeklyPage .weeklyFilters { grid-template-columns: minmax(170px, .6fr) minmax(220px, 1fr) auto minmax(0, 1fr); }
+
+.modernDeliveryPage .indicatorBoard {
+  width: min(1240px, calc(100% - 48px));
+  margin: 20px auto 0;
+  padding: 0 0 32px;
+}
+
+.modernDeliveryPage .periodCaption {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.modernDeliveryPage .indicatorSection {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgba(15,32,67,.07);
+}
+
+.modernDeliveryPage .indicatorSection + .indicatorSection {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.modernDeliveryPage .indicatorSection h2 {
+  color: var(--navy);
+}
+
+.modernDeliveryPage .indicatorCard {
+  min-height: 116px;
+  border: 1px solid #e8edf5;
+  border-radius: 14px;
+  background: #fbfcff;
+  box-shadow: 0 10px 24px rgba(15,32,67,.05);
+}
+
+.modernDeliveryPage .indicatorCard.tone-soft { background: #fff8f4; }
+.modernDeliveryPage .indicatorCard.tone-danger { background: #fff4f2; border-color: #ffd1cc; }
+
+.modernInvestmentPage .investmentSummary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0;
+  margin: 18px auto 0;
+}
+
+.modernInvestmentPage .investmentSummary article {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+  box-shadow: 0 16px 36px rgba(15,32,67,.07);
+}
+
+.modernInvestmentPage .investmentGrid {
+  width: min(1240px, calc(100% - 48px));
+  margin: 20px auto 0;
+  padding: 0 0 32px;
+  gap: 18px;
+}
+
+.modernInvestmentPage .investmentPanel {
+  min-height: 0;
+  border: 1px solid var(--line) !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  padding: 20px;
+}
+
+.modernInvestmentPage .investmentPanel h2,
+.modernInvestmentPage .investmentPanel:nth-child(even) h2 {
+  color: var(--navy);
+  font-size: 22px;
+}
+
+.modernInvestmentPage .investmentRow {
+  grid-template-columns: minmax(0, 1fr) 90px 110px 16px;
+  min-height: 34px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.modernQualityPage .qaOverview {
+  width: min(1240px, calc(100% - 48px));
+  margin: 20px auto 0;
+  padding: 0;
+}
+
+.modernQualityPage .qaTablePanel,
+.modernQualityPage .qaAdditionalPanel {
+  width: min(1240px, calc(100% - 48px));
+  margin: 20px auto 0;
+}
+
+.modernQualityPage .qaSummaryCard,
+.modernQualityPage .qaGauge,
+.modernQualityPage .qaAdditionalGrid article {
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(15,32,67,.07);
+}
+
+.modernWeeklyPage .weeklySummary {
+  padding: 0;
+  margin-top: 20px;
+}
+
+.modernWeeklyPage .weeklySummary article,
+.modernWeeklyPage .weeklyPanel,
+.modernWeeklyPage .weeklyItem {
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(15,32,67,.07);
+}
+
+.modernWeeklyPage .weeklyGrid,
+.modernWeeklyPage .weeklyItems {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 @media (max-width: 1180px) {
   .reportsGridFive { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hoursFiltersPanel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -332,6 +509,36 @@ td { color: #263247; }
   .modernChartGrid, .modernLaborPage .laborDetailPanel, .laborPlaceholder { width: calc(100% - 32px); }
   .laborFilterPanel { grid-template-columns: 1fr !important; }
   .adminOverviewGrid { grid-template-columns: 1fr; }
+  .modernDeliveryPage .deliveryHeader,
+  .modernInvestmentPage .investmentHero,
+  .modernQualityPage .qualityHeader,
+  .modernWeeklyPage .weeklyHeader,
+  .modernDeliveryPage .deliveryFilters,
+  .modernInvestmentPage .investmentFilters,
+  .modernQualityPage .qualityFilters,
+  .modernWeeklyPage .weeklyFilters,
+  .modernDeliveryPage .indicatorBoard,
+  .modernInvestmentPage .investmentSummary,
+  .modernInvestmentPage .investmentGrid,
+  .modernQualityPage .qaOverview,
+  .modernQualityPage .qaTablePanel,
+  .modernQualityPage .qaAdditionalPanel,
+  .modernWeeklyPage .weeklySummary,
+  .modernWeeklyPage .weeklyGrid,
+  .modernWeeklyPage .weeklyItems {
+    width: calc(100% - 32px) !important;
+  }
+  .modernDeliveryPage .deliveryFilters,
+  .modernInvestmentPage .investmentFilters,
+  .modernQualityPage .qualityFilters,
+  .modernWeeklyPage .weeklyFilters,
+  .modernInvestmentPage .investmentSummary,
+  .modernQualityPage .qaOverview {
+    grid-template-columns: 1fr !important;
+  }
+  .modernDeliveryPage .deliveryMeta {
+    justify-items: start;
+  }
 }
 
 @media (max-width: 560px) {

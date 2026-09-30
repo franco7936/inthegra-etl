@@ -111,6 +111,7 @@ Patron visual vigente:
 
 - Las pantallas de reportes usan un ancho comun de contenido de `1240px` con margenes laterales consistentes.
 - Los filtros usan controles modernos con bordes redondeados, foco naranja y selectores/date pickers alineados al sistema visual.
+- Todos los reportes principales comparten hero moderno con icono, estado de datos, paneles redondeados y comportamiento responsive sin scroll horizontal de pagina.
 - El reporte de horas permite alternar entre vista `Personas` y `Proyectos`; ambas muestran columna `Control`.
 - El filtro `Detalle booking` no se muestra en el front. Si se necesita analizar detalle operativo, se usa el campo tecnico `activity_detail_at`.
 - `PGI Log` abre una ventana compacta y responsive para cargar horas manuales con proyecto, persona, tipo de incidencia, fecha, horas y comentario opcional.

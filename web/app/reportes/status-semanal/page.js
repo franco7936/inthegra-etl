@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { CalendarCheck, Filter } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageSection } from '@/components/ui';
 import './status.module.css';
 
 function defaultWeek() {
@@ -66,7 +68,7 @@ export default function StatusSemanalPage() {
   }, [data]);
 
   return (
-    <main className="shell weeklyShell">
+    <main className="shell weeklyShell modernReportPage modernWeeklyPage">
       <nav className="topbar">
         <Link className="brand" href="/">
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
@@ -78,16 +80,19 @@ export default function StatusSemanalPage() {
         <Link className="navLink" href="/">Inicio</Link>
       </nav>
 
-      <section className="qualityHeader weeklyHeader">
-        <div>
-          <p className="eyebrow">Reporte semanal</p>
-          <h1>Status semanal de lideres</h1>
-          <p>Vista ejecutiva para consolidar el reporte semanal del equipo: estado general, avance, riesgos, bloqueos y proximos pasos.</p>
+      <PageSection className="modernReportHero qualityHeader weeklyHeader">
+        <div className="modernReportHeroText">
+          <span className="modernHeroIcon"><CalendarCheck size={20} /></span>
+          <div>
+            <p className="eyebrow">Reporte semanal</p>
+            <h1>Status semanal de lideres</h1>
+            <p>Vista ejecutiva para consolidar el reporte semanal del equipo: estado general, avance, riesgos, bloqueos y proximos pasos.</p>
+          </div>
         </div>
         <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando datos' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
-      </section>
+      </PageSection>
 
-      <section className="qualityFilters weeklyFilters">
+      <PageSection className="qualityFilters weeklyFilters modernFilterPanel">
         <label>
           Semana
           <input type="date" value={filters.week} onChange={(event) => setFilters({ ...filters, week: event.target.value })} />
@@ -101,8 +106,8 @@ export default function StatusSemanalPage() {
             ))}
           </select>
         </label>
-        <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
-      </section>
+        <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
+      </PageSection>
 
       {error && <div className="errorBox">{error}</div>}
       {modelPending && <div className="errorBox">{data.setupMessage}</div>}

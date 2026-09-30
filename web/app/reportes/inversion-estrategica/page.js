@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { BriefcaseBusiness, CalendarDays, Filter, FolderKanban } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageSection } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -47,7 +49,7 @@ function EpicRow({ epic }) {
 
 function ProjectPanel({ project }) {
   return (
-    <article className="investmentPanel">
+    <article className="investmentPanel modernDataPanel">
       <header>
         <div>
           <h2>{project.proyecto}</h2>
@@ -97,7 +99,7 @@ export default function InversionEstrategicaPage() {
   }
 
   return (
-    <main className="shell investmentShell">
+    <main className="shell investmentShell modernReportPage modernInvestmentPage">
       <nav className="topbar investmentTopbar">
         <Link className="brand" href="/">
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
@@ -109,15 +111,19 @@ export default function InversionEstrategicaPage() {
         <Link className="navLink" href="/">Inicio</Link>
       </nav>
 
-      <section className="investmentHero">
-        <div>
-          <h1>Inversiones Estratégicas · {monthTitle(filters.month)}</h1>
-          <p>Horas destinadas agrupadas por proyecto y por épica.</p>
+      <PageSection className="modernReportHero investmentHero">
+        <div className="modernReportHeroText">
+          <span className="modernHeroIcon"><BriefcaseBusiness size={20} /></span>
+          <div>
+            <p className="eyebrow">Estrategia</p>
+            <h1>Inversiones Estrategicas</h1>
+            <p>Horas destinadas agrupadas por proyecto y por epica para {monthTitle(filters.month)}.</p>
+          </div>
         </div>
         <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
-      </section>
+      </PageSection>
 
-      <section className="investmentFilters">
+      <PageSection className="investmentFilters modernFilterPanel">
         <label>
           Mes
           <input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} />
@@ -131,17 +137,17 @@ export default function InversionEstrategicaPage() {
             ))}
           </select>
         </label>
-        <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
-      </section>
+        <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
+      </PageSection>
 
       {error && <div className="errorBox">{error}</div>}
       {modelPending && <div className="errorBox">{data.setupMessage}</div>}
       {data?.demo && <div className="warningBox">Vista previa con datos de referencia del mockup. Los valores reales se activan cuando exista la vista SQL.</div>}
 
-      <section className="investmentSummary">
-        <article><span>Proyectos</span><strong>{data?.projects?.length || 0}</strong></article>
-        <article><span>Horas totales</span><strong>{formatHours(totalHours)} hrs</strong></article>
-      </section>
+      <PageSection className="investmentSummary modernKpiGrid">
+        <article><span><FolderKanban size={16} />Proyectos</span><strong>{data?.projects?.length || 0}</strong></article>
+        <article><span><CalendarDays size={16} />Horas totales</span><strong>{formatHours(totalHours)} hrs</strong></article>
+      </PageSection>
 
       {loading ? (
         <section className="investmentGrid"><div className="emptyState">Cargando inversiones...</div></section>

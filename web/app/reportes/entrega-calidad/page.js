@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { Filter, Gauge } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { PageSection } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -95,7 +97,7 @@ export default function EntregaCalidadPage() {
   }
 
   return (
-    <main className="shell reportShell deliveryShell">
+    <main className="shell reportShell deliveryShell modernReportPage modernDeliveryPage">
       <nav className="topbar">
         <Link className="brand" href="/">
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
@@ -104,28 +106,32 @@ export default function EntregaCalidadPage() {
         <Link className="navLink" href="/">Inicio</Link>
       </nav>
 
-      <section className="deliveryHeader">
-        <div>
-          <h1>Indicadores de Entrega y Calidad de Servicio</h1>
-          <p>Indicadores operativos de entrega, uso de horas, soporte, roadmap y retrabajo.</p>
+      <PageSection className="modernReportHero deliveryHeader">
+        <div className="modernReportHeroText">
+          <span className="modernHeroIcon"><Gauge size={20} /></span>
+          <div>
+            <p className="eyebrow">Indicadores ejecutivos</p>
+            <h1>Indicadores de Entrega y Calidad de Servicio</h1>
+            <p>Indicadores operativos de entrega, uso de horas, soporte, roadmap y retrabajo.</p>
+          </div>
         </div>
         <div className="deliveryMeta">
           <span>{data?.collaborators ? `Indicadores en base a ${data.collaborators} colaboradores` : 'Base pendiente'}</span>
           <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
         </div>
-      </section>
+      </PageSection>
 
-      <section className="deliveryFilters">
+      <PageSection className="deliveryFilters modernFilterPanel">
         <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
-        <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
-      </section>
+        <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
+      </PageSection>
 
       {error && <div className="errorBox">{error}</div>}
       {modelPending && <div className="errorBox">{data.setupMessage}</div>}
       {data?.demo && <div className="warningBox">Vista previa con datos de referencia del mockup. Los valores reales se activan cuando exista la vista SQL.</div>}
 
       {loading ? (
-        <section className="indicatorSection"><div className="emptyState">Cargando indicadores...</div></section>
+        <PageSection className="indicatorSection modernDataPanel"><div className="emptyState">Cargando indicadores...</div></PageSection>
       ) : (
         <div className="indicatorBoard">
           <p className="periodCaption">Periodo: {monthTitle(filters.month)}</p>

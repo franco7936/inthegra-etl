@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { Filter, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageSection } from '@/components/ui';
 
 function monthRange(monthValue) {
   const [year, month] = String(monthValue || '').split('-').map(Number);
@@ -98,7 +100,7 @@ export default function CalidadPerformancePage() {
   }
 
   return (
-    <main className="shell qualityShell qaShell">
+    <main className="shell qualityShell qaShell modernReportPage modernQualityPage">
       <nav className="topbar">
         <Link className="brand" href="/">
           <img src="https://www.inthegrasoftware.com/Inthegra.svg" alt="Inthegra" />
@@ -107,19 +109,22 @@ export default function CalidadPerformancePage() {
         <Link className="navLink" href="/">Inicio</Link>
       </nav>
 
-      <section className="qualityHeader qaHeader">
-        <div>
-          <p className="eyebrow">QA</p>
-          <h1>Tablero minimo de metricas QA - Inthegra</h1>
-          <p>Medir pocas metricas, pero utiles para decidir, priorizar mejoras y reducir riesgo en releases.</p>
+      <PageSection className="modernReportHero qualityHeader qaHeader">
+        <div className="modernReportHeroText">
+          <span className="modernHeroIcon"><ShieldCheck size={20} /></span>
+          <div>
+            <p className="eyebrow">QA</p>
+            <h1>Tablero minimo de metricas QA - Inthegra</h1>
+            <p>Medir pocas metricas, pero utiles para decidir, priorizar mejoras y reducir riesgo en releases.</p>
+          </div>
         </div>
         <span className={error || modelPending ? 'status error' : 'status'}>{loading ? 'Consultando Turso' : error ? 'Error de datos' : modelPending ? 'Modelo pendiente' : 'Datos actualizados'}</span>
-      </section>
+      </PageSection>
 
-      <section className="qualityFilters qaFilters">
+      <PageSection className="qualityFilters qaFilters modernFilterPanel">
         <label>Mes<input type="month" value={filters.month} onChange={(event) => handleMonthChange(event.target.value)} /></label>
-        <button className="primaryButton compact" onClick={() => loadData(filters)}>Aplicar</button>
-      </section>
+        <button className="primaryButton compact reportIconButton" onClick={() => loadData(filters)}><Filter size={16} />Aplicar</button>
+      </PageSection>
 
       {error && <div className="errorBox">{error}</div>}
       {modelPending && <div className="errorBox">{data.setupMessage}</div>}
@@ -132,7 +137,7 @@ export default function CalidadPerformancePage() {
         <Gauge value={data?.summary?.coberturaPromedio || 0} label="Cobertura promedio" tone="orange" />
       </section>
 
-      <section className="qaTablePanel">
+      <PageSection className="qaTablePanel modernDataPanel">
         <div className="panelHeader"><div><h2>Metricas minimas</h2><p>{monthTitle(filters.month)}</p></div></div>
         {loading ? <div className="emptyState">Cargando metricas QA...</div> : (
           <div className="tableWrap">
@@ -142,12 +147,12 @@ export default function CalidadPerformancePage() {
             </table>
           </div>
         )}
-      </section>
+      </PageSection>
 
-      <section className="qaAdditionalPanel">
+      <PageSection className="qaAdditionalPanel modernDataPanel">
         <h2>Metricas adicionales sugeridas para sumar al modelo</h2>
         <div className="qaAdditionalGrid">{(data?.additionalMetrics || []).map((item) => <article key={item.metrica}><h3>{item.metrica}</h3><p>{item.motivo}</p></article>)}</div>
-      </section>
+      </PageSection>
     </main>
   );
 }
