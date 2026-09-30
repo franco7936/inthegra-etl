@@ -14,9 +14,9 @@ Stack base:
 - Lucide React para iconografia consistente.
 - Recharts para graficos de reportes.
 - TanStack Table para evolucionar las grillas de datos.
-- Componentes propios reutilizables sobre la identidad visual de Inthegra.
+- Componentes propios reutilizables sobre la identidad visual de Inthegra, con una base tipo `shadcn/ui` adaptada al proyecto.
 
-La primera pantalla migrada parcialmente es `Reporte de horas`: incorpora iconos en acciones, barra superior con menus agrupados, encabezado fijo y una tabla compacta que evita superposiciones en escritorio. En pantallas chicas mantiene scroll horizontal controlado.
+La home ya usa la nueva base de componentes (`PageSection`, `Surface`, `ReportCard`) para organizar reportes por categoria. `Reporte de horas` incorpora iconos en acciones, barra superior con menus agrupados, encabezado fijo y una tabla compacta que evita superposiciones en escritorio. En pantallas chicas mantiene scroll horizontal controlado.
 
 ## Deploy gratis en Vercel
 

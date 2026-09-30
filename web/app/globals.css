@@ -231,6 +231,38 @@ td { color: #263247; }
 .laborDetailPanel { margin-top: 20px; }
 .laborTable { min-width: 840px; }
 
+.modernHome { background: #f6f8fb; padding-bottom: 48px; }
+.designSection { width: min(1240px, calc(100% - 48px)); margin: 0 auto; }
+.designSurface { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,0.92); box-shadow: 0 16px 36px rgba(15, 32, 67, 0.07); }
+.homeIntro { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: end; padding: 42px 0 22px; }
+.homeIntroText h1 { max-width: 760px; margin-bottom: 12px; color: var(--ink); font-size: clamp(38px, 4.5vw, 64px); line-height: 0.98; letter-spacing: 0; }
+.homeIntroText p:not(.eyebrow) { max-width: 760px; margin: 0; color: var(--muted); font-size: 18px; line-height: 1.55; }
+.homeProfileSummary { display: grid; gap: 6px; padding: 20px; }
+.homeProfileSummary span, .homeOverview span { color: var(--muted); font-size: 12px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
+.homeProfileSummary strong { color: var(--navy); font-size: 24px; }
+.homeProfileSummary small, .homeOverview small { color: var(--muted); line-height: 1.4; }
+.homeOverview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.homeOverview .designSurface { padding: 18px; }
+.homeOverview strong { display: block; margin-top: 8px; color: var(--navy); font-size: 28px; }
+.homeReportGroups { display: grid; gap: 18px; }
+.reportGroupBand { display: grid; gap: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: 0 16px 36px rgba(15, 32, 67, 0.07); }
+.reportGroupBand header { display: flex; align-items: flex-start; gap: 12px; }
+.reportGroupBand header > span { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: #fff1e8; color: var(--orange); }
+.reportGroupBand h2 { margin: 0 0 4px; color: var(--navy); font-size: 20px; }
+.reportGroupBand p { margin: 0; color: var(--muted); line-height: 1.45; }
+.modernReportGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.modernReportCard { position: relative; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: start; min-height: 126px; padding: 16px; border: 1px solid #e6ebf3; border-radius: 12px; background: #fbfcff; color: inherit; text-decoration: none; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+.modernReportCard:hover { transform: translateY(-2px); border-color: #ffd1ad; background: #fffaf7; box-shadow: 0 16px 34px rgba(15, 32, 67, 0.1); }
+.modernReportIcon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: var(--navy); color: #fff; font-weight: 900; }
+.modernReportContent { min-width: 0; display: grid; gap: 5px; }
+.modernReportContent small { color: var(--orange-dark); font-size: 11px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
+.modernReportContent strong { color: var(--navy); font-size: 16px; line-height: 1.2; }
+.modernReportContent em { color: var(--muted); font-style: normal; font-size: 13px; line-height: 1.42; }
+.modernReportArrow { color: #98a2b3; }
+.adminBand { border-color: #d8e4f7; background: #fbfdff; }
+.emptyHomeState { display: grid; gap: 6px; padding: 22px; }
+.emptyHomeState strong { color: var(--navy); font-size: 18px; }
+
 @media (max-width: 1180px) {
   .reportsGridFive { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hoursFiltersPanel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -241,6 +273,8 @@ td { color: #263247; }
   .indicatorGrid, .investmentGrid, .qualityGrid, .qaAdditionalGrid, .laborCharts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .reportsGridThree, .reportsGridFour { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .qualityHighlights, .qaOverview, .laborOverview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .homeIntro { grid-template-columns: 1fr; }
+  .modernReportGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
@@ -251,6 +285,8 @@ td { color: #263247; }
   .deliveryMeta { justify-items: start; white-space: normal; }
   .panelHeader { align-items: flex-start; flex-direction: column; }
   .panelActions { justify-content: flex-start; }
+  .designSection { width: calc(100% - 32px); }
+  .homeOverview { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -260,4 +296,7 @@ td { color: #263247; }
   .investmentRow em { display: none; }
   .laborTypeRow, .laborRankRow { grid-template-columns: 1fr; }
   .laborRankRow span { text-align: left; }
+  .modernReportGrid { grid-template-columns: 1fr; }
+  .modernReportCard { grid-template-columns: 38px minmax(0, 1fr); }
+  .modernReportArrow { display: none; }
 }
