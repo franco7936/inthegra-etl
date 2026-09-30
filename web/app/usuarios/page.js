@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Eye, EyeOff, RefreshCw, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { PageSection, ModernSelect } from '@/components/ui';
+import { PageSection } from '@/components/ui';
+import { ModernSelect } from '@/components/AppTopbar';
 
 const EMPTY_FORM = { username: '', password: '', role: 'viewer', projectId: '', enabled: true };
 
