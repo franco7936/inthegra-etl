@@ -107,6 +107,14 @@ Pantallas:
 | `/reportes/inversion-estrategica` | Inversiones Estrategicas por proyecto y epica. |
 | `/reportes/calidad-performance` | Tablero minimo de metricas QA. |
 
+Patron visual vigente:
+
+- Las pantallas de reportes usan un ancho comun de contenido de `1240px` con margenes laterales consistentes.
+- Los filtros usan controles modernos con bordes redondeados, foco naranja y selectores/date pickers alineados al sistema visual.
+- El reporte de horas permite alternar entre vista `Personas` y `Proyectos`; ambas muestran columna `Control`.
+- El filtro `Detalle booking` no se muestra en el front. Si se necesita analizar detalle operativo, se usa el campo tecnico `activity_detail_at`.
+- `PGI Log` abre una ventana compacta y responsive para cargar horas manuales con proyecto, persona, tipo de incidencia, fecha, horas y comentario opcional.
+
 ## Contrato esperado para `VW_STATUS_SEMANAL_LIDERES`
 
 Este reporte replica en la web el reporte semanal que hoy se completa en Excel por los lideres. Mientras la vista SQL no exista, usa datos de referencia y muestra estado `Modelo pendiente`.

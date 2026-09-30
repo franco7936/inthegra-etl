@@ -12,7 +12,7 @@
 }
 
 :global(.weeklySummary) {
-  width: min(1180px, 100%);
+  width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -48,7 +48,7 @@
 }
 
 :global(.weeklyGrid) {
-  width: min(1180px, 100%);
+  width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
@@ -148,7 +148,7 @@
 }
 
 :global(.weeklyItems) {
-  width: min(1180px, 100%);
+  width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
   display: grid;
   gap: 18px;
